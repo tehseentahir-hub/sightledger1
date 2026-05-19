@@ -1,0 +1,8 @@
+node_modules/
+.next/
+logs/
+*.log
+backend/.env
+backend/aquaflow.db
+frontend/.env.local
+*.zip
