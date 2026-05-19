@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Download } from 'lucide-react'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL } from '../../../lib/api'
@@ -55,8 +55,10 @@ export default function InvoicePage() {
           end_date: endDate
         }
       })
+      const ledgerRes = await axios.get(`${API_URL}/payments/customer/${selectedCustomer}`)
 
       const customerDeliveries = res.data
+      const ledger = ledgerRes.data
       const customer = customers.find(c => c.id === parseInt(selectedCustomer))
 
       if (!customerDeliveries.length) {
@@ -104,7 +106,7 @@ export default function InvoicePage() {
         `Rs ${(d.bottles_delivered * customer.rate_per_bottle).toLocaleString()}`
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 110,
         head: [['Date', 'Delivered', 'Returned', 'Net', 'Type', 'Rider', 'Amount']],
         body: tableData,
@@ -117,6 +119,11 @@ export default function InvoicePage() {
       const totalBottles = customerDeliveries.reduce((sum, d) => sum + d.bottles_delivered, 0)
       const totalReturned = customerDeliveries.reduce((sum, d) => sum + d.bottles_returned, 0)
       const totalAmount = customerDeliveries.reduce((sum, d) => sum + (d.bottles_delivered * customer.rate_per_bottle), 0)
+      const paidAmount = (ledger?.ledger || [])
+        .filter(item => item.type === 'payment' && item.date >= startDate && item.date <= endDate)
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+      const periodBalance = totalAmount - paidAmount
+      const currentBalance = Number(ledger?.current_balance || 0)
 
       doc.setFontSize(12)
       doc.text(`Total Deliveries: ${customerDeliveries.length}`, 20, finalY)
@@ -127,6 +134,17 @@ export default function InvoicePage() {
       doc.setFontSize(14)
       doc.setTextColor(14, 165, 233)
       doc.text(`Total Amount: Rs ${totalAmount.toLocaleString()}`, 20, finalY + 36)
+      doc.setTextColor(20, 20, 20)
+      doc.setFontSize(12)
+      doc.text(`Paid This Period: Rs ${paidAmount.toLocaleString()}`, 20, finalY + 46)
+      doc.text(`Remaining This Period: Rs ${periodBalance.toLocaleString()}`, 20, finalY + 54)
+      doc.text(
+        currentBalance >= 0
+          ? `Current Account Balance: Rs ${currentBalance.toLocaleString()} pending`
+          : `Current Account Balance: Rs ${Math.abs(currentBalance).toLocaleString()} advance`,
+        20,
+        finalY + 62
+      )
 
       // Footer on very bottom
       doc.setTextColor(120, 120, 120)
@@ -207,7 +225,7 @@ export default function InvoicePage() {
               onChange={e => setYear(Number(e.target.value))}
               className="input"
             >
-              {[2024, 2025, 2026].map(y => (
+              {Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 2 + index).map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>

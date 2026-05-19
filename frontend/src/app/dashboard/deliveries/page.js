@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, X, Calendar, FileText } from 'lucide-react'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL } from '../../../lib/api'
@@ -77,7 +77,7 @@ export default function DeliveriesPage() {
 
     try {
       const deliveryData = {
-        customer_id: form.is_walkin ? 1 : form.customer_id, // Use ID 1 for walk-in or actual customer
+        customer_id: form.is_walkin ? 0 : form.customer_id,
         is_walkin: form.is_walkin,
         walkin_name: form.is_walkin ? form.walkin_name : null,
         walkin_rate_per_bottle: form.is_walkin ? form.walkin_rate_per_bottle : null,
@@ -168,7 +168,7 @@ export default function DeliveriesPage() {
         `Rs ${(d.bottles_delivered * d.rate_per_bottle).toLocaleString()}`
       ])
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 65,
         head: [['Date', 'Delivered', 'Returned', 'Net', 'Type', 'Rider', 'Amount']],
         body: tableData,

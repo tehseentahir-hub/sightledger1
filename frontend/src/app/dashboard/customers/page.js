@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, Search, Edit, Trash2, X, Upload } from 'lucide-react'
+import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL } from '../../../lib/api'
 
@@ -18,12 +19,14 @@ const initialForm = {
 }
 
 export default function CustomersPage() {
+  const { user } = useAuth()
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [editId, setEditId] = useState(null)
   const [search, setSearch] = useState('')
+  const canDelete = user?.type !== 'staff'
 
   useEffect(() => {
     loadCustomers()
@@ -137,9 +140,11 @@ export default function CustomersPage() {
                         <button onClick={() => handleEdit(c)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">
                           <Edit size={18} />
                         </button>
-                        <button onClick={() => handleDelete(c.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
-                          <Trash2 size={18} />
-                        </button>
+                        {canDelete && (
+                          <button onClick={() => handleDelete(c.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

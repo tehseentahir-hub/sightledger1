@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Droplets, Eye, EyeOff, ShieldCheck, Store } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -85,12 +85,12 @@ export default function LoginPage() {
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 text-sky-700 px-3 py-1 text-sm font-semibold mb-4">
               {isAdminLogin ? <ShieldCheck size={16} /> : <Store size={16} />}
-              {isAdminLogin ? 'Super Admin Login' : 'Shop Owner Login'}
+              {isAdminLogin ? 'Super Admin Login' : 'Shop Owner / Cashier Login'}
             </div>
             <h2 className="text-3xl font-bold text-slate-900">Welcome back</h2>
             <p className="text-slate-500 mt-2">
               {isAdminLogin
-                ? 'Manage shops, plans, subscriptions, and SaaS account access.'
+                ? 'Manage shops, plans, subscriptions, and account access.'
                 : 'Open your shop dashboard to manage customers, deliveries, payments, and invoices.'}
             </p>
           </div>
@@ -109,13 +109,15 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {isAdminLogin ? 'Email' : 'Email or cashier phone'}
+              </label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder="Enter your email"
+                placeholder={isAdminLogin ? 'Enter your email' : 'Enter email or cashier phone'}
                 required
               />
             </div>
@@ -163,5 +165,17 @@ export default function LoginPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center bg-sky-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600" />
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

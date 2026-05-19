@@ -1,6 +1,12 @@
 const db = require('../config/db');
 const { logAudit } = require('../utils/audit');
 
+const isDateExpired = (dateText) => {
+  if (!dateText) return false;
+  const today = new Date().toISOString().split('T')[0];
+  return String(dateText).slice(0, 10) < today;
+};
+
 const getCustomers = (req, res) => {
   const { shop_id } = req.user;
 
@@ -52,12 +58,16 @@ const createCustomer = (req, res) => {
   const { shop_id } = req.user;
   const { name, phone, address, bottle_type, rate_per_bottle, payment_type, deposit_bottles, security_deposit_amount, is_active } = req.body;
 
-  // Check customer limit first
-  db.get('SELECT COUNT(*) as count, shop.customer_limit FROM customers c JOIN shops shop ON c.shop_id = shop.id WHERE c.shop_id = ?', [shop_id], (err, result) => {
+  // Check subscription and customer limit first.
+  db.get('SELECT COUNT(c.id) as count, shop.customer_limit, shop.subscription_expiry FROM shops shop LEFT JOIN customers c ON c.shop_id = shop.id WHERE shop.id = ?', [shop_id], (err, result) => {
     if (err) return res.status(500).json({ message: 'Error checking limit', error: err.message });
 
     const currentCount = result?.count || 0;
     const limit = result?.customer_limit || 100;
+
+    if (isDateExpired(result?.subscription_expiry)) {
+      return res.status(403).json({ message: 'Subscription expired! Contact Super Admin.', expired: true });
+    }
 
     if (currentCount >= limit) {
       return res.status(400).json({
@@ -126,6 +136,10 @@ const deleteCustomer = (req, res) => {
   const { id } = req.params;
   const { shop_id } = req.user;
 
+  if (req.user.type === 'staff') {
+    return res.status(403).json({ message: 'Only shop owner can delete customers' });
+  }
+
   db.get('SELECT deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], (err, customer) => {
     if (err) return res.status(500).json({ message: 'Error fetching customer', error: err.message });
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
@@ -159,13 +173,17 @@ const importCustomers = (req, res) => {
   const { shop_id } = req.user;
   const { customers } = req.body;
 
-  // Check limit first
-  db.get('SELECT COUNT(*) as count, shop.customer_limit FROM customers c JOIN shops shop ON c.shop_id = shop.id WHERE c.shop_id = ?', [shop_id], (err, result) => {
+  // Check subscription and limit first.
+  db.get('SELECT COUNT(c.id) as count, shop.customer_limit, shop.subscription_expiry FROM shops shop LEFT JOIN customers c ON c.shop_id = shop.id WHERE shop.id = ?', [shop_id], (err, result) => {
     if (err) return res.status(500).json({ message: 'Error checking limit' });
 
     const currentCount = result?.count || 0;
     const limit = result?.customer_limit || 100;
     const available = limit - currentCount;
+
+    if (isDateExpired(result?.subscription_expiry)) {
+      return res.status(403).json({ message: 'Subscription expired! Contact Super Admin.', expired: true });
+    }
 
     if (available <= 0) {
       return res.status(400).json({ message: `Customer limit reached! You can only have ${limit} customers.` });

@@ -17,6 +17,12 @@ const getAsync = (sql, params = []) =>
     });
   });
 
+const isDateExpired = (dateText) => {
+  if (!dateText) return false;
+  const today = new Date().toISOString().split('T')[0];
+  return String(dateText).slice(0, 10) < today;
+};
+
 const getDeliveries = (req, res) => {
   const { shop_id } = req.user;
   const { start_date, end_date, customer_id } = req.query;
@@ -37,7 +43,7 @@ const getDeliveries = (req, res) => {
   }
 
   if (customer_id) {
-    query += ' AND d.customer_id = ?';
+    query += " AND d.customer_id = ? AND d.delivery_type != 'walk_in'";
     params.push(customer_id);
   }
 
@@ -61,7 +67,7 @@ const createDelivery = (req, res) => {
   db.get('SELECT subscription_expiry FROM shops WHERE id = ?', [shop_id], async (err, shop) => {
     if (err || !shop) return res.status(500).json({ message: 'Error checking subscription' });
 
-    if (shop.subscription_expiry && new Date(shop.subscription_expiry) < new Date()) {
+    if (isDateExpired(shop.subscription_expiry)) {
       return res.status(403).json({ message: 'Subscription expired! Contact Super Admin.', expired: true });
     }
 
@@ -77,7 +83,7 @@ const createDelivery = (req, res) => {
           await runAsync('ROLLBACK');
           return res.status(400).json({ message: 'Walk-in rate per bottle is required' });
         }
-        resolvedCustomerId = 1;
+        resolvedCustomerId = 0;
         resolvedDeliveryType = 'walk_in';
       } else {
         if (!customer_id) {
@@ -156,7 +162,7 @@ const deleteDelivery = (req, res) => {
 
     // Check expiry
     db.get('SELECT subscription_expiry FROM shops WHERE id = ?', [shop_id], async (err, shop) => {
-      if (new Date(shop.subscription_expiry) < new Date()) {
+      if (isDateExpired(shop.subscription_expiry)) {
         return res.status(403).json({ message: 'Subscription expired. Cannot delete.' });
       }
 
@@ -164,7 +170,7 @@ const deleteDelivery = (req, res) => {
         await runAsync('BEGIN TRANSACTION');
 
         const netChange = Number(delivery.bottles_delivered) - Number(delivery.bottles_returned || 0);
-        if (!(delivery.delivery_type === 'walk_in' || delivery.customer_id === 1)) {
+        if (delivery.delivery_type !== 'walk_in') {
           await runAsync(
             'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers - ?, bottles_in_shop = bottles_in_shop + ? WHERE shop_id = ?',
             [netChange, netChange, shop_id]

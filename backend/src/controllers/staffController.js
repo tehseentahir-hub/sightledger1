@@ -29,6 +29,10 @@ const createStaff = (req, res) => {
   const { name, phone, role, password } = req.body;
   const normalizedRole = role === 'rider' ? 'rider' : 'cashier';
 
+  if (req.user.type === 'staff') {
+    return res.status(403).json({ message: 'Only shop owner can manage staff' });
+  }
+
   if (!name?.trim()) {
     return res.status(400).json({ message: 'Name is required' });
   }
@@ -65,6 +69,10 @@ const updateStaff = (req, res) => {
   const { shop_id } = req.user;
   const { name, phone, role, password, is_active } = req.body;
   const normalizedRole = role === 'rider' ? 'rider' : 'cashier';
+
+  if (req.user.type === 'staff') {
+    return res.status(403).json({ message: 'Only shop owner can manage staff' });
+  }
 
   db.get('SELECT * FROM staff WHERE id = ? AND shop_id = ?', [id, shop_id], (err, existing) => {
     if (err) return res.status(500).json({ message: 'Error fetching staff member', error: err.message });
@@ -108,6 +116,10 @@ const updateStaff = (req, res) => {
 const deleteStaff = (req, res) => {
   const { id } = req.params;
   const { shop_id } = req.user;
+
+  if (req.user.type === 'staff') {
+    return res.status(403).json({ message: 'Only shop owner can manage staff' });
+  }
 
   db.run('DELETE FROM staff WHERE id = ? AND shop_id = ?', [id, shop_id], function(err) {
     if (err) return res.status(500).json({ message: 'Error deleting staff', error: err.message });

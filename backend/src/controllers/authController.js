@@ -7,6 +7,12 @@ const isSuperAdminShop = (shop) => (
   shop?.subscription_type === 'super_admin'
 );
 
+const isDateExpired = (dateText) => {
+  if (!dateText) return false;
+  const today = new Date().toISOString().split('T')[0];
+  return String(dateText).slice(0, 10) < today;
+};
+
 const register = async (req, res) => {
   const { shop_name, owner_name, phone, address, email, password } = req.body;
 
@@ -45,14 +51,67 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+  const identifier = String(email || '').trim();
 
-  db.get('SELECT * FROM shops WHERE email = ?', [email], async (err, shop) => {
+  const loginStaff = () => {
+    db.get('SELECT st.*, sh.shop_name, sh.subscription_type, sh.subscription_expiry, sh.customer_limit, sh.default_refill_rate, sh.is_active as shop_is_active FROM staff st JOIN shops sh ON st.shop_id = sh.id WHERE st.phone = ?', [identifier], async (staffErr, staff) => {
+      if (staffErr) {
+        return res.status(500).json({ message: 'Login error', error: staffErr.message });
+      }
+
+      if (!staff) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+
+      const isMatch = await bcrypt.compare(password, staff.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+
+      if (!staff.is_active || !staff.shop_is_active) {
+        return res.status(403).json({ message: 'Account is deactivated' });
+      }
+
+      if (isDateExpired(staff.subscription_expiry)) {
+        return res.status(403).json({
+          message: 'Subscription expired',
+          expired: true,
+          subscription_type: staff.subscription_type
+        });
+      }
+
+      const token = jwt.sign(
+        { id: staff.id, role: staff.role, shop_id: staff.shop_id, type: 'staff' },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: staff.id,
+          name: staff.name,
+          phone: staff.phone,
+          shop_name: staff.shop_name,
+          role: staff.role,
+          type: 'staff',
+          shop_id: staff.shop_id,
+          subscription_type: staff.subscription_type,
+          subscription_expiry: staff.subscription_expiry,
+          customer_limit: staff.customer_limit,
+          default_refill_rate: staff.default_refill_rate || 100
+        }
+      });
+    });
+  };
+
+  db.get('SELECT * FROM shops WHERE email = ?', [identifier], async (err, shop) => {
     if (err) {
       return res.status(500).json({ message: 'Login error', error: err.message });
     }
 
     if (!shop) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return loginStaff();
     }
 
     const isMatch = await bcrypt.compare(password, shop.password);
@@ -65,7 +124,7 @@ const login = async (req, res) => {
     }
 
     // Check subscription expiry
-    if (new Date(shop.subscription_expiry) < new Date() && !isSuperAdminShop(shop)) {
+    if (isDateExpired(shop.subscription_expiry) && !isSuperAdminShop(shop)) {
       return res.status(403).json({
         message: 'Subscription expired',
         expired: true,
@@ -108,15 +167,19 @@ const login = async (req, res) => {
 };
 
 const getMe = (req, res) => {
-  const { id } = req.user;
+  const { id, shop_id, type } = req.user;
+  const targetShopId = type === 'staff' ? shop_id : id;
 
   db.get(`
-    SELECT s.*, COUNT(c.id) as customer_count
+    SELECT s.id, s.shop_name, s.owner_name, s.phone, s.address, s.email,
+           s.subscription_type, s.subscription_start, s.subscription_expiry,
+           s.customer_limit, s.custom_price, s.custom_limit, s.default_refill_rate,
+           s.is_active, s.created_at, s.updated_at, COUNT(c.id) as customer_count
     FROM shops s
     LEFT JOIN customers c ON s.id = c.shop_id
     WHERE s.id = ?
     GROUP BY s.id
-  `, [id], (err, shop) => {
+  `, [targetShopId], (err, shop) => {
     if (err) return res.status(500).json({ message: 'Error fetching shop info' });
     if (!shop) return res.status(404).json({ message: 'Shop not found' });
     res.json(shop);

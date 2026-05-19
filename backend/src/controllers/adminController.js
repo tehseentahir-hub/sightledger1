@@ -7,7 +7,10 @@ const systemShopFilterNoAlias = `shop_name NOT IN ('AquaFlow System', 'Sight Led
 
 const getAllShops = (req, res) => {
   db.all(`
-    SELECT s.*, COUNT(c.id) as customer_count
+    SELECT s.id, s.shop_name, s.owner_name, s.phone, s.address, s.email,
+           s.subscription_type, s.subscription_start, s.subscription_expiry,
+           s.customer_limit, s.custom_price, s.custom_limit, s.default_refill_rate,
+           s.is_active, s.created_at, s.updated_at, COUNT(c.id) as customer_count
     FROM shops s
     LEFT JOIN customers c ON s.id = c.shop_id
     WHERE ${systemShopFilter}

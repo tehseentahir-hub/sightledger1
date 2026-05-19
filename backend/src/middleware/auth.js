@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'aquaflow_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
+
+if (!process.env.JWT_SECRET) {
+  console.warn('JWT_SECRET is not set. Using a temporary runtime secret; all users must log in again after restart.');
+}
 
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');

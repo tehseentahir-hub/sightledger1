@@ -15,7 +15,7 @@ const menuItems = [
   { href: '/dashboard/inventory', icon: Package, label: 'Inventory' },
   { href: '/dashboard/payments', icon: DollarSign, label: 'Payments' },
   { href: '/dashboard/invoice', icon: FileText, label: 'Invoice' },
-  { href: '/dashboard/settings', icon: SlidersHorizontal, label: 'Settings' },
+  { href: '/dashboard/settings', icon: SlidersHorizontal, label: 'Settings', ownerOnly: true },
   { href: '/dashboard/expenses', icon: TrendingUp, label: 'Expenses' },
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
 ]
@@ -42,6 +42,7 @@ export default function DashboardLayout({ children }) {
   }
 
   if (!user || user.role === 'super_admin') return null
+  const visibleMenuItems = menuItems.filter((item) => !item.ownerOnly || user?.type !== 'staff')
 
   const handleLogout = () => {
     logout()
@@ -72,7 +73,7 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <nav className="flex-1 p-4 space-y-1">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
