@@ -38,7 +38,7 @@ const getDashboard = async (req, res) => {
       return series;
     };
 
-    // Walk-in deliveries are identified by: customer_id = 1 OR delivery_type = 'walk_in'
+    // Walk-in deliveries are identified only by delivery_type to avoid real customer ID collisions.
     // We'll track BOTH the count AND the bottles refilled for walk-ins
 
     const [todayDeliveries, todayStats, last7Stats, monthStats, activeCustomers, pendingPayments, advanceBalance, todayCollection, todayWalkinCash, bottlesOutstanding, monthlySales, recentDeliveries, walkinTrendRows] =
@@ -49,10 +49,10 @@ const getDashboard = async (req, res) => {
         ),
         pGet(
           `SELECT COUNT(*) AS count,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN 1 ELSE 0 END), 0) AS walkins,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN 1 ELSE 0 END), 0) AS homes
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN 1 ELSE 0 END), 0) AS walkins,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN 1 ELSE 0 END), 0) AS homes
              FROM deliveries
             WHERE shop_id = ? AND delivery_date = ?`,
           [shop_id, today]
@@ -60,10 +60,10 @@ const getDashboard = async (req, res) => {
         pGet(
           `SELECT COUNT(*) AS count,
                   COALESCE(SUM(bottles_delivered), 0) AS bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN 1 ELSE 0 END), 0) AS walkins,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN 1 ELSE 0 END), 0) AS homes
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN 1 ELSE 0 END), 0) AS walkins,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN 1 ELSE 0 END), 0) AS homes
              FROM deliveries
             WHERE shop_id = ? AND delivery_date BETWEEN ? AND ?`,
           [shop_id, last7Start, today]
@@ -71,10 +71,10 @@ const getDashboard = async (req, res) => {
         pGet(
           `SELECT COUNT(*) AS count,
                   COALESCE(SUM(bottles_delivered), 0) AS bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN 1 ELSE 0 END), 0) AS walkins,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
-                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN 1 ELSE 0 END), 0) AS homes
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'walk_in' THEN 1 ELSE 0 END), 0) AS walkins,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN bottles_delivered ELSE 0 END), 0) AS home_bottles,
+                  COALESCE(SUM(CASE WHEN delivery_type = 'home_delivery' THEN 1 ELSE 0 END), 0) AS homes
              FROM deliveries
             WHERE shop_id = ? AND delivery_date BETWEEN ? AND ?`,
           [shop_id, monthStart, today]
@@ -93,7 +93,7 @@ const getDashboard = async (req, res) => {
                SELECT d.customer_id, SUM(d.bottles_delivered * c2.rate_per_bottle) AS total_billed
                  FROM deliveries d
                  JOIN customers c2 ON c2.id = d.customer_id
-                WHERE d.shop_id = ? AND d.customer_id != 1
+                WHERE d.shop_id = ? AND d.delivery_type != 'walk_in'
                 GROUP BY d.customer_id
              ) b ON b.customer_id = c.id
              LEFT JOIN (
@@ -118,7 +118,7 @@ const getDashboard = async (req, res) => {
                SELECT d.customer_id, SUM(d.bottles_delivered * c2.rate_per_bottle) AS total_billed
                  FROM deliveries d
                  JOIN customers c2 ON c2.id = d.customer_id
-                WHERE d.shop_id = ? AND d.customer_id != 1
+                WHERE d.shop_id = ? AND d.delivery_type != 'walk_in'
                 GROUP BY d.customer_id
              ) b ON b.customer_id = c.id
              LEFT JOIN (
@@ -137,27 +137,30 @@ const getDashboard = async (req, res) => {
         pGet(
           `SELECT COALESCE(SUM(bottles_delivered * COALESCE(walkin_rate_per_bottle, 0)), 0) as walkin_cash
              FROM deliveries
-            WHERE shop_id = ? AND delivery_date = ? AND (delivery_type = 'walk_in' OR customer_id = 1)`,
+            WHERE shop_id = ? AND delivery_date = ? AND (delivery_type = 'walk_in')`,
           [shop_id, today]
         ),
-        pGet('SELECT COALESCE(SUM(bottles_delivered - bottles_returned), 0) as outstanding FROM deliveries WHERE shop_id = ? AND (delivery_type != "walk_in" AND customer_id != 1)', [shop_id]),
+        pGet(
+          "SELECT COALESCE(SUM(bottles_delivered - bottles_returned), 0) as outstanding FROM deliveries WHERE shop_id = ? AND delivery_type != 'walk_in'",
+          [shop_id]
+        ),
         pGet(
           `SELECT COALESCE(SUM(
                     CASE
-                      WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                      WHEN d.delivery_type = 'walk_in'
                       THEN (d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0))
                       ELSE (d.bottles_delivered * COALESCE(c.rate_per_bottle, 0))
                     END
                   ), 0) as sales
              FROM deliveries d
-             LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+             LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
             WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?`,
           [shop_id, monthStart, today]
         ),
         pAll(
           `SELECT d.*, COALESCE(c.name, d.walkin_name, 'Walk-in') as customer_name, s.name as rider_name
              FROM deliveries d
-             LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+             LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
              LEFT JOIN staff s ON d.rider_id = s.id
             WHERE d.shop_id = ?
             ORDER BY d.created_at DESC
@@ -168,20 +171,20 @@ const getDashboard = async (req, res) => {
           `SELECT
              d.delivery_date,
              COUNT(*) AS total_deliveries,
-             COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1 THEN 1 ELSE 0 END), 0) AS walkins,
-             COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1 THEN d.bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
-             COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN 1 ELSE 0 END), 0) AS homes,
-             COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN d.bottles_delivered ELSE 0 END), 0) AS home_bottles,
+             COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' THEN 1 ELSE 0 END), 0) AS walkins,
+             COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' THEN d.bottles_delivered ELSE 0 END), 0) AS walkin_bottles,
+             COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' THEN 1 ELSE 0 END), 0) AS homes,
+             COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' THEN d.bottles_delivered ELSE 0 END), 0) AS home_bottles,
              COALESCE(SUM(d.bottles_delivered), 0) AS bottles,
              COALESCE(SUM(
                CASE
-                 WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                 WHEN d.delivery_type = 'walk_in'
                  THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0)
                  ELSE d.bottles_delivered * COALESCE(c.rate_per_bottle, 0)
                END
              ), 0) AS sales
            FROM deliveries d
-           LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+           LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
           WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?
           GROUP BY d.delivery_date
           ORDER BY d.delivery_date ASC`,
@@ -246,14 +249,14 @@ const getReports = async (req, res) => {
                 d.bottles_delivered,
                 d.bottles_returned,
                 CASE
-                  WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                  WHEN d.delivery_type = 'walk_in'
                   THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0)
                   ELSE d.bottles_delivered * COALESCE(c.rate_per_bottle, 0)
                 END as amount,
                 d.delivery_type,
                 s.name as rider_name
            FROM deliveries d
-           LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+           LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
            LEFT JOIN staff s ON d.rider_id = s.id
           WHERE d.shop_id = ? AND d.delivery_date = ?`,
         [shop_id, start_date]
@@ -274,21 +277,21 @@ const getReports = async (req, res) => {
       const trend = await pAll(
         `SELECT d.delivery_date as day,
                 COUNT(*) as total_deliveries,
-                COUNT(DISTINCT CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN d.customer_id END) as customers_served,
+                COUNT(DISTINCT CASE WHEN d.delivery_type = 'home_delivery' THEN d.customer_id END) as customers_served,
                 SUM(d.bottles_delivered) as total_bottles,
-                SUM(CASE WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1 THEN 1 ELSE 0 END) as walkin_deliveries,
-                SUM(CASE WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1 THEN d.bottles_delivered ELSE 0 END) as walkin_bottles,
-                SUM(CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN 1 ELSE 0 END) as home_deliveries,
-                SUM(CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN d.bottles_delivered ELSE 0 END) as home_bottles,
+                SUM(CASE WHEN d.delivery_type = 'walk_in' THEN 1 ELSE 0 END) as walkin_deliveries,
+                SUM(CASE WHEN d.delivery_type = 'walk_in' THEN d.bottles_delivered ELSE 0 END) as walkin_bottles,
+                SUM(CASE WHEN d.delivery_type = 'home_delivery' THEN 1 ELSE 0 END) as home_deliveries,
+                SUM(CASE WHEN d.delivery_type = 'home_delivery' THEN d.bottles_delivered ELSE 0 END) as home_bottles,
                 SUM(
                   CASE
-                    WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                    WHEN d.delivery_type = 'walk_in'
                     THEN (d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0))
                     ELSE (d.bottles_delivered * COALESCE(c.rate_per_bottle, 0))
                   END
                 ) as total_sales
            FROM deliveries d
-           LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+           LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
           WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?
           GROUP BY d.delivery_date
           ORDER BY day ASC`,
@@ -324,7 +327,7 @@ const getReports = async (req, res) => {
            SELECT d.customer_id, SUM(d.bottles_delivered * c2.rate_per_bottle) AS total_billed, COUNT(d.id) AS delivery_count
            FROM deliveries d
            JOIN customers c2 ON c2.id = d.customer_id
-           WHERE d.shop_id = ? AND d.customer_id != 1
+           WHERE d.shop_id = ? AND d.delivery_type != 'walk_in'
            GROUP BY d.customer_id
          ) b ON b.customer_id = c.id
          LEFT JOIN (
@@ -348,8 +351,8 @@ const getReports = async (req, res) => {
         `SELECT
            SUM(bottles_delivered) as total_delivered,
            SUM(bottles_returned) as total_returned,
-           SUM(CASE WHEN delivery_type = 'walk_in' OR customer_id = 1 THEN 1 ELSE 0 END) as walkin_deliveries,
-           SUM(CASE WHEN delivery_type = 'home_delivery' AND customer_id != 1 THEN 1 ELSE 0 END) as home_deliveries
+           SUM(CASE WHEN delivery_type = 'walk_in' THEN 1 ELSE 0 END) as walkin_deliveries,
+           SUM(CASE WHEN delivery_type = 'home_delivery' THEN 1 ELSE 0 END) as home_deliveries
          FROM deliveries
          WHERE shop_id = ? AND delivery_date BETWEEN ? AND ?`,
         [shop_id, start_date, end_date]
@@ -362,23 +365,23 @@ const getReports = async (req, res) => {
       const income = await pGet(
         `SELECT COALESCE(SUM(
                   CASE
-                    WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                    WHEN d.delivery_type = 'walk_in'
                     THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0)
                     ELSE d.bottles_delivered * COALESCE(c.rate_per_bottle, 0)
                   END
                 ), 0) as income
            FROM deliveries d
-           LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+           LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
           WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?`,
         [shop_id, start_date, end_date]
       );
 
       const incomeBreakdown = await pGet(
         `SELECT
-           COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1 THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0) ELSE 0 END), 0) as walkin_income,
-           COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' AND d.customer_id != 1 THEN d.bottles_delivered * COALESCE(c.rate_per_bottle, 0) ELSE 0 END), 0) as home_income
+           COALESCE(SUM(CASE WHEN d.delivery_type = 'walk_in' THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0) ELSE 0 END), 0) as walkin_income,
+           COALESCE(SUM(CASE WHEN d.delivery_type = 'home_delivery' THEN d.bottles_delivered * COALESCE(c.rate_per_bottle, 0) ELSE 0 END), 0) as home_income
          FROM deliveries d
-         LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+         LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
          WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?`,
         [shop_id, start_date, end_date]
       );
@@ -407,13 +410,13 @@ const getReports = async (req, res) => {
          FROM (
            SELECT d.delivery_date as day,
                   CASE
-                    WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+                    WHEN d.delivery_type = 'walk_in'
                     THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0)
                     ELSE d.bottles_delivered * COALESCE(c.rate_per_bottle, 0)
                   END as income,
                   0 as expense
            FROM deliveries d
-           LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+           LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
            WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?
            UNION ALL
            SELECT expense_date as day, 0 as income, amount as expense

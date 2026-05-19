@@ -60,7 +60,7 @@ const getBottlesByCustomer = (req, res) => {
     SELECT c.id, c.name, c.phone, c.address,
            COALESCE(SUM(d.bottles_delivered - COALESCE(d.bottles_returned, 0)), 0) as bottles_outside
     FROM customers c
-    LEFT JOIN deliveries d ON c.id = d.customer_id AND d.delivery_type != 'walk_in' AND d.customer_id != 1
+    LEFT JOIN deliveries d ON c.id = d.customer_id AND d.delivery_type != 'walk_in'
     WHERE c.shop_id = ? AND c.is_active = 1
     GROUP BY c.id
     HAVING bottles_outside > 0

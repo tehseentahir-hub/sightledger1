@@ -23,9 +23,9 @@ const getDeliveries = (req, res) => {
 
   let query = `
     SELECT d.*, c.name as customer_name, c.phone as customer_phone, c.rate_per_bottle, s.name as rider_name,
-           CASE WHEN d.customer_id = 1 AND d.delivery_type = 'walk_in' THEN 1 ELSE 0 END as is_walkin
+           CASE WHEN d.delivery_type = 'walk_in' THEN 1 ELSE 0 END as is_walkin
     FROM deliveries d
-    LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+    LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
     LEFT JOIN staff s ON d.rider_id = s.id
     WHERE d.shop_id = ?
   `;
@@ -206,12 +206,12 @@ const getDeliveryReport = (req, res) => {
   db.all(
     `SELECT d.delivery_date, COALESCE(c.name, d.walkin_name, 'Walk-in') as customer_name, c.phone, d.bottles_delivered, d.bottles_returned,
       CASE
-        WHEN d.delivery_type = 'walk_in' OR d.customer_id = 1
+        WHEN d.delivery_type = 'walk_in'
         THEN d.bottles_delivered * COALESCE(d.walkin_rate_per_bottle, 0)
         ELSE d.bottles_delivered * COALESCE(c.rate_per_bottle, 0)
       END as amount, d.delivery_type, s.name as rider_name
      FROM deliveries d
-     LEFT JOIN customers c ON d.customer_id = c.id AND d.customer_id != 1
+     LEFT JOIN customers c ON d.customer_id = c.id AND d.delivery_type != 'walk_in'
      LEFT JOIN staff s ON d.rider_id = s.id
      WHERE d.shop_id = ? AND d.delivery_date BETWEEN ? AND ?
      ORDER BY d.delivery_date DESC`,

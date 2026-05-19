@@ -85,7 +85,7 @@ const getCustomerLedger = (req, res) => {
               (bottles_delivered * ?) as amount,
               'delivery' as type
          FROM deliveries
-        WHERE shop_id = ? AND customer_id = ?
+        WHERE shop_id = ? AND customer_id = ? AND delivery_type != 'walk_in'
         ORDER BY delivery_date, id`,
       [customer.rate_per_bottle, shop_id, id],
       (err, deliveries) => {
@@ -151,7 +151,7 @@ const getOutstanding = (req, res) => {
         COUNT(d.id) AS delivery_count
       FROM deliveries d
       JOIN customers c2 ON c2.id = d.customer_id
-      WHERE d.shop_id = ? AND d.customer_id != 1
+      WHERE d.shop_id = ? AND d.delivery_type != 'walk_in'
       GROUP BY d.customer_id
     ) b ON b.customer_id = c.id
     LEFT JOIN (

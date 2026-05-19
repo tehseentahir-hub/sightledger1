@@ -5,7 +5,7 @@ const getCustomers = (req, res) => {
   const { shop_id } = req.user;
 
   db.all(
-    'SELECT c.*, COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0) as total_bottles_outside FROM customers c LEFT JOIN deliveries d ON c.id = d.customer_id WHERE c.shop_id = ? GROUP BY c.id ORDER BY c.created_at DESC',
+    "SELECT c.*, COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0) as total_bottles_outside FROM customers c LEFT JOIN deliveries d ON c.id = d.customer_id AND d.delivery_type != 'walk_in' WHERE c.shop_id = ? GROUP BY c.id ORDER BY c.created_at DESC",
     [shop_id],
     (err, customers) => {
       if (err) return res.status(500).json({ message: 'Error fetching customers', error: err.message });
@@ -22,7 +22,7 @@ const getCustomers = (req, res) => {
              LEFT JOIN (
                SELECT customer_id, SUM(bottles_delivered * ?) as total_billed
                FROM deliveries
-               WHERE shop_id = ? AND customer_id = ?
+               WHERE shop_id = ? AND customer_id = ? AND delivery_type != 'walk_in'
                GROUP BY customer_id
              ) b ON b.customer_id = c.id
              LEFT JOIN (
