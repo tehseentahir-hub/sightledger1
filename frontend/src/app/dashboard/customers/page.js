@@ -4,6 +4,7 @@ import axios from 'axios'
 import { Plus, Search, Edit, Trash2, X, Upload } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
+import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL } from '../../../lib/api'
 
@@ -28,6 +29,7 @@ export default function CustomersPage() {
   const [editId, setEditId] = useState(null)
   const [search, setSearch] = useState('')
   const [errorAlert, setErrorAlert] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null })
   const canDelete = user?.type !== 'staff'
 
   useEffect(() => {
@@ -66,7 +68,6 @@ export default function CustomersPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this customer?')) return
     try {
       await axios.delete(`${API_URL}/customers/${id}`)
       loadCustomers()
@@ -147,7 +148,7 @@ export default function CustomersPage() {
                           <Edit size={18} />
                         </button>
                         {canDelete && (
-                          <button onClick={() => handleDelete(c.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                          <button onClick={() => setConfirmDialog({ open: true, id: c.id })} className="p-1 text-red-600 hover:bg-red-50 rounded">
                             <Trash2 size={18} />
                           </button>
                         )}
@@ -163,15 +164,15 @@ export default function CustomersPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">{editId ? 'Edit Customer' : 'Add Customer'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="input" required />
@@ -227,6 +228,18 @@ export default function CustomersPage() {
         </div>
       )}
       <CenterAlert open={!!errorAlert} title="Customer Error" message={errorAlert} onClose={() => setErrorAlert('')} />
+      <CenterDialog
+        open={confirmDialog.open}
+        type="confirm"
+        title="Delete customer?"
+        message="This customer record will be removed permanently."
+        onCancel={() => setConfirmDialog({ open: false, id: null })}
+        onConfirm={async () => {
+          const id = confirmDialog.id
+          setConfirmDialog({ open: false, id: null })
+          if (id) await handleDelete(id)
+        }}
+      />
     </div>
   )
 }

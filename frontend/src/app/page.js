@@ -1,6 +1,31 @@
 import Link from 'next/link'
 import { ArrowRight, BarChart3, CheckCircle2, CreditCard, Droplets, FileText, MessageCircle, ShieldCheck, Smartphone, Star, Truck, Users } from 'lucide-react'
 
+export const metadata = {
+  title: 'SightLedger | Water Delivery Management Software',
+  description: 'Manage water bottle deliveries, customers, inventory, billing and operations with SightLedger.',
+  keywords: [
+    'water delivery management software',
+    'water bottle delivery software',
+    'water filtration business software',
+    'SightLedger',
+  ],
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'SightLedger | Water Delivery Management Software',
+    description: 'Manage water bottle deliveries, customers, inventory, billing and operations with SightLedger.',
+    url: 'https://sightledger.com',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SightLedger | Water Delivery Management Software',
+    description: 'Manage water bottle deliveries, customers, inventory, billing and operations with SightLedger.',
+  },
+}
+
 const features = [
   { icon: Users, title: 'Customer Ledger', text: 'Customer profiles, bottle rates, deposits, credit status, and outstanding balances in one place.' },
   { icon: Truck, title: 'Delivery Control', text: 'Daily home delivery and walk-in refill records with rider tracking and bottle balance.' },
@@ -35,8 +60,29 @@ const metrics = [
 ]
 
 export default function HomePage() {
+  const softwareApplicationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Sight Ledger',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: 'https://sightledger.com',
+    description:
+      'Manage water bottle deliveries, customers, inventory, billing and operations with SightLedger.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'PKR',
+      description: '7 days free trial for up to 100 customers',
+    },
+  }
+
   return (
     <main className="min-h-screen bg-[#f7fcff] text-slate-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
+      />
       <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
@@ -52,6 +98,7 @@ export default function HomePage() {
             <a href="#features" className="hover:text-sky-700">Features</a>
             <a href="#reviews" className="hover:text-sky-700">Reviews</a>
             <Link href="/pricing" className="hover:text-sky-700">Pricing</Link>
+            <Link href="/blog" className="hover:text-sky-700">Blog</Link>
             <a href="#contact" className="hover:text-sky-700">Contact</a>
           </nav>
           <div className="flex items-center gap-2">

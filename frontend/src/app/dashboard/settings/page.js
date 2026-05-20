@@ -5,6 +5,7 @@ import {
   Save, Settings, Plus, Edit, Trash2, KeyRound, UserCog, Bike, Store
 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL } from '../../../lib/api'
 
@@ -34,6 +35,28 @@ export default function SettingsPage() {
     new_password: '',
     confirm_password: '',
   })
+  const [dialog, setDialog] = useState({ open: false, type: 'error', title: '', message: '', onConfirm: null, onCancel: null })
+
+  const showError = (message, title = 'Action Failed') => {
+    setDialog({
+      open: true,
+      type: 'error',
+      title,
+      message,
+      onConfirm: () => setDialog(prev => ({ ...prev, open: false })),
+      onCancel: null,
+    })
+  }
+  const showSuccess = (message, title = 'Done') => {
+    setDialog({
+      open: true,
+      type: 'success',
+      title,
+      message,
+      onConfirm: () => setDialog(prev => ({ ...prev, open: false })),
+      onCancel: null,
+    })
+  }
 
   useEffect(() => {
     loadSettings()
@@ -80,10 +103,10 @@ export default function SettingsPage() {
         name: res.data.owner_name,
         default_refill_rate: res.data.default_refill_rate,
       } : prev)
-      alert('Settings updated successfully')
+      showSuccess('Shop settings updated successfully.')
       loadSettings()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving settings')
+      showError(err.response?.data?.message || 'Unable to save settings right now.')
     }
     setSavingProfile(false)
   }
@@ -91,7 +114,7 @@ export default function SettingsPage() {
   const handleOwnerPasswordSave = async (e) => {
     e.preventDefault()
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      return alert('New password and confirm password must match')
+      return showError('New password and confirm password must match.', 'Password Mismatch')
     }
     setSavingPassword(true)
     try {
@@ -100,9 +123,9 @@ export default function SettingsPage() {
         new_password: passwordForm.new_password,
       })
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
-      alert('Owner password updated successfully')
+      showSuccess('Owner password updated successfully.')
     } catch (err) {
-      alert(err.response?.data?.message || 'Error updating password')
+      showError(err.response?.data?.message || 'Unable to update password right now.')
     }
     setSavingPassword(false)
   }
@@ -119,7 +142,7 @@ export default function SettingsPage() {
       setEditingRiderId(null)
       loadStaff()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving rider')
+      showError(err.response?.data?.message || 'Unable to save rider.')
     }
   }
 
@@ -139,7 +162,7 @@ export default function SettingsPage() {
       setEditingCashierId(null)
       loadStaff()
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving cashier')
+      showError(err.response?.data?.message || 'Unable to save cashier.')
     }
   }
 
@@ -161,14 +184,24 @@ export default function SettingsPage() {
     })
   }
 
-  const deleteStaff = async (id, label) => {
-    if (!confirm(`Delete this ${label}?`)) return
-    try {
-      await axios.delete(`${API_URL}/staff/${id}`)
-      loadStaff()
-    } catch (err) {
-      alert(err.response?.data?.message || `Error deleting ${label}`)
-    }
+  const deleteStaff = (id, label) => {
+    setDialog({
+      open: true,
+      type: 'confirm',
+      title: `Delete ${label}?`,
+      message: `This will permanently remove this ${label} record.`,
+      onCancel: () => setDialog(prev => ({ ...prev, open: false })),
+      onConfirm: async () => {
+        setDialog(prev => ({ ...prev, open: false }))
+        try {
+          await axios.delete(`${API_URL}/staff/${id}`)
+          loadStaff()
+          showSuccess(`${label[0].toUpperCase()}${label.slice(1)} deleted.`)
+        } catch (err) {
+          showError(err.response?.data?.message || `Unable to delete ${label}.`)
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -181,7 +214,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
           <Settings size={24} /> Settings & Team
         </h1>
-        <p className="text-gray-500">Bar bar manual cheezein add karne ki jagah yahan se profile, refill defaults, riders, cashiers aur passwords manage karein.</p>
+        <p className="text-gray-500">Manage profile, refill defaults, riders, cashier accounts, and passwords in one place.</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -212,7 +245,7 @@ export default function SettingsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Default Refill Rate per Bottle</label>
               <input type="number" min="1" value={profile.default_refill_rate} onChange={e => setProfile({ ...profile, default_refill_rate: Number(e.target.value) })} className="input" required />
-              <p className="text-xs text-gray-500 mt-1">Walk-in refill modal me ye rate automatically aayega.</p>
+              <p className="text-xs text-gray-500 mt-1">This default rate is auto-filled for walk-in refills.</p>
             </div>
             <button type="submit" disabled={savingProfile} className="btn btn-primary inline-flex items-center gap-2">
               <Save size={18} /> {savingProfile ? 'Saving...' : 'Save Settings'}
@@ -251,7 +284,7 @@ export default function SettingsPage() {
             <Bike size={20} className="text-primary" />
             <h2 className="text-lg font-semibold">Rider Names</h2>
           </div>
-          <p className="text-sm text-gray-500 mb-4">Rider ko login ID dene ki zaroorat nahi. Sirf naam add karein taa ke delivery ke sath assign ho sake.</p>
+          <p className="text-sm text-gray-500 mb-4">Rider accounts do not need login access. Add rider names for delivery assignment only.</p>
           <form onSubmit={saveRider} className="space-y-4 mb-6">
             <div>
               <label className="block text-sm font-medium mb-1">Rider Name</label>
@@ -276,7 +309,7 @@ export default function SettingsPage() {
             {staffLoading ? (
               <p className="text-sm text-gray-400">Loading riders...</p>
             ) : riders.length === 0 ? (
-              <p className="text-sm text-gray-400">Abhi koi rider add nahi hua.</p>
+              <p className="text-sm text-gray-400">No rider added yet.</p>
             ) : riders.map(member => (
               <div key={member.id} className="border rounded-lg p-4 flex items-center justify-between gap-3">
                 <div>
@@ -301,7 +334,7 @@ export default function SettingsPage() {
             <UserCog size={20} className="text-primary" />
             <h2 className="text-lg font-semibold">Cashier Accounts</h2>
           </div>
-          <p className="text-sm text-gray-500 mb-4">Cashier ko phone aur password chahiye hota hai. Yahin se account create, disable, aur password reset karein.</p>
+          <p className="text-sm text-gray-500 mb-4">Create and manage cashier accounts with phone and password.</p>
           <form onSubmit={saveCashier} className="space-y-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -336,7 +369,7 @@ export default function SettingsPage() {
             {staffLoading ? (
               <p className="text-sm text-gray-400">Loading cashiers...</p>
             ) : cashiers.length === 0 ? (
-              <p className="text-sm text-gray-400">Abhi koi cashier account add nahi hua.</p>
+              <p className="text-sm text-gray-400">No cashier account added yet.</p>
             ) : cashiers.map(member => (
               <div key={member.id} className="border rounded-lg p-4 flex items-center justify-between gap-3">
                 <div>
@@ -363,6 +396,14 @@ export default function SettingsPage() {
           Current shop: <span className="font-medium text-gray-800">{user?.shop_name}</span>
         </p>
       </div>
+      <CenterDialog
+        open={dialog.open}
+        type={dialog.type}
+        title={dialog.title}
+        message={dialog.message}
+        onConfirm={dialog.onConfirm}
+        onCancel={dialog.onCancel}
+      />
     </div>
   )
 }

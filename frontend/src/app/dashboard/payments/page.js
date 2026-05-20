@@ -4,6 +4,7 @@ import axios from 'axios'
 import { Plus, X, FileText, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
 import jsPDF from 'jspdf'
 import CenterAlert from '../../../components/CenterAlert'
+import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL } from '../../../lib/api'
 
@@ -27,6 +28,8 @@ export default function PaymentsPage() {
   const [selectedSummary, setSelectedSummary] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [errorAlert, setErrorAlert] = useState('')
+  const [successAlert, setSuccessAlert] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null })
 
   useEffect(() => {
     loadCustomers()
@@ -84,9 +87,22 @@ export default function PaymentsPage() {
     const payAmount = Number(form.amount || 0)
 
     if (form.payment_type === 'partial') {
-      if (!confirm(`Current pending: Rs ${pendingAmount.toLocaleString()}\nPayment amount: Rs ${payAmount.toLocaleString()}\nRemaining after payment: Rs ${Math.max(0, pendingAmount - payAmount).toLocaleString()}`)) {
-        return
-      }
+      return setConfirmDialog({
+        open: true,
+        message: `Current pending: Rs ${pendingAmount.toLocaleString()}, payment: Rs ${payAmount.toLocaleString()}, remaining: Rs ${Math.max(0, pendingAmount - payAmount).toLocaleString()}. Continue?`,
+        onConfirm: async () => {
+          setConfirmDialog({ open: false, message: '', onConfirm: null })
+          try {
+            await axios.post(`${API_URL}/payments`, { ...form, amount: payAmount })
+            setShowModal(false)
+            setForm({ customer_id: '', amount: '', payment_date: new Date().toISOString().split('T')[0], payment_type: 'partial', notes: '' })
+            setCustomerSearch('')
+            loadPayments()
+            loadOutstanding()
+            setSuccessAlert('Payment recorded successfully.')
+          } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record payment.') }
+        }
+      })
     }
 
     try {
@@ -96,7 +112,7 @@ export default function PaymentsPage() {
       setCustomerSearch('')
       loadPayments()
       loadOutstanding()
-      alert('Payment recorded successfully!')
+      setSuccessAlert('Payment recorded successfully.')
     } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record payment.') }
   }
 
@@ -266,8 +282,8 @@ export default function PaymentsPage() {
 
       {/* Ledger Modal */}
       {showLedger && ledgerData && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-2xl max-h-[95svh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Ledger - {ledgerData.customer.name}</h2>
               <button onClick={() => setShowLedger(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
@@ -311,13 +327,13 @@ export default function PaymentsPage() {
 
       {/* Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Record Payment</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Customer *</label>
                 <input
@@ -417,6 +433,21 @@ export default function PaymentsPage() {
         </div>
       )}
       <CenterAlert open={!!errorAlert} title="Payment Error" message={errorAlert} onClose={() => setErrorAlert('')} />
+      <CenterDialog
+        open={!!successAlert}
+        type="success"
+        title="Payment Saved"
+        message={successAlert}
+        onConfirm={() => setSuccessAlert('')}
+      />
+      <CenterDialog
+        open={confirmDialog.open}
+        type="confirm"
+        title="Confirm Payment"
+        message={confirmDialog.message}
+        onCancel={() => setConfirmDialog({ open: false, message: '', onConfirm: null })}
+        onConfirm={confirmDialog.onConfirm || (() => setConfirmDialog({ open: false, message: '', onConfirm: null }))}
+      />
     </div>
   )
 }

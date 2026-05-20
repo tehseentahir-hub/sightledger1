@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
+import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL } from '../../../lib/api'
 
@@ -36,6 +37,7 @@ export default function DeliveriesPage() {
   })
   const [customerSearch, setCustomerSearch] = useState('')
   const [errorAlert, setErrorAlert] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null })
 
   const canDelete = user?.role === 'shop_owner' || user?.role === 'super_admin'
   const defaultRefillRate = Number(user?.default_refill_rate || 100)
@@ -116,7 +118,6 @@ export default function DeliveriesPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this delivery?')) return
     try {
       await axios.delete(`${API_URL}/deliveries/${id}`)
       loadDeliveries()
@@ -146,7 +147,7 @@ export default function DeliveriesPage() {
       const customer = customers.find(c => c.id === customerId)
 
       if (!deliveries.length) {
-        alert('No deliveries found')
+        setErrorAlert('No deliveries found for the selected customer and date range.')
         return
       }
 
@@ -186,7 +187,7 @@ export default function DeliveriesPage() {
       doc.save(`invoice_${customer.name}.pdf`)
       setShowInvoiceModal(false)
     } catch (err) {
-      alert('Error generating invoice')
+      setErrorAlert('Unable to generate invoice right now.')
     }
   }
 
@@ -301,7 +302,7 @@ export default function DeliveriesPage() {
                     </td>
                     <td>
                       {canDelete ? (
-                        <button onClick={() => handleDelete(d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded">
+                        <button onClick={() => setConfirmDialog({ open: true, id: d.id })} className="p-1 text-red-600 hover:bg-red-50 rounded">
                           <X size={18} />
                         </button>
                       ) : (
@@ -318,15 +319,15 @@ export default function DeliveriesPage() {
 
       {/* Add Delivery Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">New Delivery</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               {/* Walk-in Toggle */}
               <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                 <input
@@ -470,15 +471,15 @@ export default function DeliveriesPage() {
 
       {/* Invoice Modal */}
       {showInvoiceModal && invoiceCustomer && (
-        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-md h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Generate Invoice</h2>
               <button onClick={() => setShowInvoiceModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="flex-1 p-6 space-y-4 overflow-y-auto">
               <p>Invoice for: <strong>{invoiceCustomer.name}</strong></p>
               <p>Rate: Rs {invoiceCustomer.rate_per_bottle}/bottle</p>
               <div className="flex gap-2 pt-4">
@@ -490,6 +491,18 @@ export default function DeliveriesPage() {
         </div>
       )}
       <CenterAlert open={!!errorAlert} title="Delivery Error" message={errorAlert} onClose={() => setErrorAlert('')} />
+      <CenterDialog
+        open={confirmDialog.open}
+        type="confirm"
+        title="Delete delivery?"
+        message="This delivery entry will be removed permanently."
+        onCancel={() => setConfirmDialog({ open: false, id: null })}
+        onConfirm={async () => {
+          const id = confirmDialog.id
+          setConfirmDialog({ open: false, id: null })
+          if (id) await handleDelete(id)
+        }}
+      />
     </div>
   )
 }

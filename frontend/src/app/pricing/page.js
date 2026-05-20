@@ -58,6 +58,25 @@ const plans = [
 export const metadata = {
   title: 'Sight Ledger Pricing | Water Bottle Delivery Software Plans',
   description: 'Pricing plans for Sight Ledger water bottle delivery management software, including free trial, Plus, Aqua Plus, Aqua Premium, and custom plans.',
+  keywords: [
+    'Sight Ledger pricing',
+    'water bottle software pricing',
+    'water delivery SaaS plans',
+  ],
+  alternates: {
+    canonical: '/pricing',
+  },
+  openGraph: {
+    title: 'Sight Ledger Pricing | Water Bottle Delivery Software Plans',
+    description: 'Pricing plans for Sight Ledger water bottle delivery management software, including free trial, Plus, Aqua Plus, Aqua Premium, and custom plans.',
+    url: 'https://sightledger.com/pricing',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Sight Ledger Pricing | Water Bottle Delivery Software Plans',
+    description: 'Pricing plans for Sight Ledger water bottle delivery management software.',
+  },
 }
 
 export default function PricingPage() {

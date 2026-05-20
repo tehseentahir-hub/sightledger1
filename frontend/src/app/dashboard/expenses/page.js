@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, X } from 'lucide-react'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -27,6 +28,7 @@ export default function ExpensesPage() {
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear()
   })
+  const [errorAlert, setErrorAlert] = useState('')
 
   useEffect(() => {
     loadExpenses()
@@ -58,7 +60,7 @@ export default function ExpensesPage() {
       setForm({ expense_type: 'fuel', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0] })
       loadExpenses()
       loadSummary()
-    } catch (err) { alert('Error recording expense') }
+    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record expense right now.') }
   }
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0)
@@ -135,15 +137,15 @@ export default function ExpensesPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Add Expense</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
                 <select value={form.expense_type} onChange={e => setForm({...form, expense_type: e.target.value})} className="input">
@@ -167,6 +169,7 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+      <CenterAlert open={!!errorAlert} title="Expense Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }

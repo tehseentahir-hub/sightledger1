@@ -5,6 +5,7 @@ import { Download } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -16,6 +17,7 @@ export default function InvoicePage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
+  const [errorAlert, setErrorAlert] = useState('')
 
   useEffect(() => {
     loadCustomers()
@@ -40,7 +42,7 @@ export default function InvoicePage() {
   }
 
   const generateInvoice = async () => {
-    if (!selectedCustomer) return alert('Select a customer first')
+    if (!selectedCustomer) return setErrorAlert('Please select a customer first.')
 
     setLoading(true)
     try {
@@ -62,7 +64,7 @@ export default function InvoicePage() {
       const customer = customers.find(c => c.id === parseInt(selectedCustomer))
 
       if (!customerDeliveries.length) {
-        alert('No deliveries found for this month')
+        setErrorAlert('No deliveries found for this selected month.')
         setLoading(false)
         return
       }
@@ -163,7 +165,7 @@ export default function InvoicePage() {
 
     } catch (err) {
       console.error(err)
-      alert('Error generating invoice')
+      setErrorAlert('Unable to generate invoice right now.')
     }
     setLoading(false)
   }
@@ -261,6 +263,7 @@ export default function InvoicePage() {
           <li>5. You can print or share the invoice</li>
         </ul>
       </div>
+      <CenterAlert open={!!errorAlert} title="Invoice Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }

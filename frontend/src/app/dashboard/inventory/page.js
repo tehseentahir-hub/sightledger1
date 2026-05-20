@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Package, Plus, X, Users, ArrowRight } from 'lucide-react'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -12,6 +13,7 @@ export default function InventoryPage() {
   const [showCustomerModal, setShowCustomerModal] = useState(false)
   const [customersWithBottles, setCustomersWithBottles] = useState([])
   const [form, setForm] = useState({ action: 'add', count: 1 })
+  const [errorAlert, setErrorAlert] = useState('')
 
   useEffect(() => {
     loadInventory()
@@ -40,7 +42,7 @@ export default function InventoryPage() {
       setShowModal(false)
       setForm({ action: 'add', count: 1 })
       loadInventory()
-    } catch (err) { alert('Error updating inventory') }
+    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to update inventory right now.') }
   }
 
   if (loading) {
@@ -85,7 +87,7 @@ export default function InventoryPage() {
             <div className="text-left">
               <p className="text-3xl font-bold text-purple-600">{totalWithCustomers}</p>
               <p className="text-sm text-purple-700">With Customers</p>
-              <p className="text-xs text-purple-500 mt-1">Click to see details â†’</p>
+              <p className="text-xs text-purple-500 mt-1">Click to see details</p>
             </div>
           </button>
 
@@ -117,8 +119,8 @@ export default function InventoryPage() {
 
       {/* Customer List Modal */}
       {showCustomerModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-2xl w-full max-w-lg h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <div>
                 <h2 className="text-xl font-bold">Bottles with Customers</h2>
@@ -128,7 +130,7 @@ export default function InventoryPage() {
                 <X size={24} />
               </button>
             </div>
-            <div className="overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4">
               {customersWithBottles.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   No bottles with customers
@@ -161,15 +163,15 @@ export default function InventoryPage() {
 
       {/* Adjust Inventory Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl w-full max-w-md h-[100dvh] sm:h-auto sm:max-h-[92dvh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Adjust Inventory</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Action</label>
                 <select value={form.action} onChange={e => setForm({...form, action: e.target.value})} className="input">
@@ -186,6 +188,7 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+      <CenterAlert open={!!errorAlert} title="Inventory Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }
