@@ -20,6 +20,9 @@ const initialForm = {
   is_active: true
 }
 
+const numberOrEmpty = (value) => value === '' ? '' : Number(value)
+const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
+
 export default function CustomersPage() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState([])
@@ -46,11 +49,17 @@ export default function CustomersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const payload = {
+      ...form,
+      rate_per_bottle: numberOrZero(form.rate_per_bottle),
+      deposit_bottles: numberOrZero(form.deposit_bottles),
+      security_deposit_amount: numberOrZero(form.security_deposit_amount),
+    }
     try {
       if (editId) {
-        await axios.put(`${API_URL}/customers/${editId}`, form)
+        await axios.put(`${API_URL}/customers/${editId}`, payload)
       } else {
-        await axios.post(`${API_URL}/customers`, form)
+        await axios.post(`${API_URL}/customers`, payload)
       }
       setShowModal(false)
       setForm(initialForm)
@@ -232,7 +241,7 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Rate per Bottle</label>
-                  <input type="number" value={form.rate_per_bottle} onChange={e => setForm({...form, rate_per_bottle: Number(e.target.value)})} className="input" />
+                  <input type="number" value={form.rate_per_bottle} onChange={e => setForm({...form, rate_per_bottle: numberOrEmpty(e.target.value)})} className="input" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -245,12 +254,12 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Deposit Bottles</label>
-                  <input type="number" value={form.deposit_bottles} onChange={e => setForm({...form, deposit_bottles: Number(e.target.value)})} className="input" />
+                  <input type="number" value={form.deposit_bottles} onChange={e => setForm({...form, deposit_bottles: numberOrEmpty(e.target.value)})} className="input" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Security Deposit Amount (Rs)</label>
-                <input type="number" min="0" value={form.security_deposit_amount || 0} onChange={e => setForm({...form, security_deposit_amount: Number(e.target.value)})} className="input" />
+                <input type="number" min="0" value={form.security_deposit_amount} onChange={e => setForm({...form, security_deposit_amount: numberOrEmpty(e.target.value)})} className="input" />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active: e.target.checked})} className="w-4 h-4" />

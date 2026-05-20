@@ -10,6 +10,9 @@ import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
+const numberOrEmpty = (value) => value === '' ? '' : Number(value)
+const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
+
 export default function DeliveriesPage() {
   const { user } = useAuth()
   const [deliveries, setDeliveries] = useState([])
@@ -78,17 +81,18 @@ export default function DeliveriesPage() {
     e.preventDefault()
     if (!form.bottles_delivered || form.bottles_delivered < 1) return setErrorAlert('Please enter delivered bottles greater than 0.')
     if (!form.is_walkin && !form.customer_id) return setErrorAlert('Please select a customer from search results.')
+    if (form.is_walkin && !numberOrZero(form.walkin_rate_per_bottle)) return setErrorAlert('Please enter a walk-in refill rate greater than 0.')
 
     try {
       const deliveryData = {
         customer_id: form.is_walkin ? 0 : form.customer_id,
         is_walkin: form.is_walkin,
         walkin_name: form.is_walkin ? form.walkin_name : null,
-        walkin_rate_per_bottle: form.is_walkin ? form.walkin_rate_per_bottle : null,
+        walkin_rate_per_bottle: form.is_walkin ? numberOrZero(form.walkin_rate_per_bottle) : null,
         rider_id: form.is_walkin ? null : (form.rider_id || null),
         delivery_date: form.delivery_date,
-        bottles_delivered: form.bottles_delivered,
-        bottles_returned: form.is_walkin ? 0 : (form.bottles_returned || 0),
+        bottles_delivered: numberOrZero(form.bottles_delivered),
+        bottles_returned: form.is_walkin ? 0 : numberOrZero(form.bottles_returned),
         delivery_type: form.is_walkin ? 'walk_in' : form.delivery_type,
         notes: form.notes
       }
@@ -459,7 +463,7 @@ export default function DeliveriesPage() {
                     type="number"
                     min="1"
                     value={form.walkin_rate_per_bottle}
-                    onChange={e => setForm({...form, walkin_rate_per_bottle: Number(e.target.value)})}
+                    onChange={e => setForm({...form, walkin_rate_per_bottle: numberOrEmpty(e.target.value)})}
                     className="input"
                     required
                   />
@@ -484,12 +488,12 @@ export default function DeliveriesPage() {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">{form.is_walkin ? 'Refill Bottles *' : 'Bottles Delivered *'}</label>
-                  <input type="number" min="1" value={form.bottles_delivered} onChange={e => setForm({...form, bottles_delivered: Number(e.target.value)})} className="input" required />
+                  <input type="number" min="1" value={form.bottles_delivered} onChange={e => setForm({...form, bottles_delivered: numberOrEmpty(e.target.value)})} className="input" required />
                 </div>
                 {!form.is_walkin && (
                   <div>
                     <label className="block text-sm font-medium mb-1">Bottles Returned</label>
-                    <input type="number" min="0" value={form.bottles_returned} onChange={e => setForm({...form, bottles_returned: Number(e.target.value)})} className="input" />
+                    <input type="number" min="0" value={form.bottles_returned} onChange={e => setForm({...form, bottles_returned: numberOrEmpty(e.target.value)})} className="input" />
                   </div>
                 )}
               </div>

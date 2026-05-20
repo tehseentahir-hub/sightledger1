@@ -5,6 +5,9 @@ import { Plus, X } from 'lucide-react'
 
 import { API_URL } from '../../../lib/api'
 
+const numberOrEmpty = (value) => value === '' ? '' : Number(value)
+const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
+
 export default function PlansPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +29,12 @@ export default function PlansPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await axios.post(`${API_URL}/admin/plans`, form)
+      await axios.post(`${API_URL}/admin/plans`, {
+        ...form,
+        duration_days: numberOrZero(form.duration_days),
+        price: numberOrZero(form.price),
+        customer_limit: numberOrZero(form.customer_limit),
+      })
       setShowModal(false)
       setForm({ plan_name: '', duration_days: 30, price: 0, customer_limit: 100 })
       loadPlans()
@@ -76,15 +84,15 @@ export default function PlansPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Duration (days)</label>
-                <input type="number" value={form.duration_days} onChange={e => setForm({...form, duration_days: Number(e.target.value)})} className="input" required />
+                <input type="number" value={form.duration_days} onChange={e => setForm({...form, duration_days: numberOrEmpty(e.target.value)})} className="input" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Price (Rs)</label>
-                <input type="number" value={form.price} onChange={e => setForm({...form, price: Number(e.target.value)})} className="input" required />
+                <input type="number" value={form.price} onChange={e => setForm({...form, price: numberOrEmpty(e.target.value)})} className="input" required />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Customer Limit</label>
-                <input type="number" value={form.customer_limit} onChange={e => setForm({...form, customer_limit: Number(e.target.value)})} className="input" required />
+                <input type="number" value={form.customer_limit} onChange={e => setForm({...form, customer_limit: numberOrEmpty(e.target.value)})} className="input" required />
               </div>
               <button type="submit" className="btn btn-primary w-full py-3">Create Plan</button>
             </form>

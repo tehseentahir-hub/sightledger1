@@ -11,6 +11,8 @@ import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 const emptyRider = { name: '', is_active: true }
 const emptyCashier = { name: '', phone: '', password: '', is_active: true }
+const numberOrEmpty = (value) => value === '' ? '' : Number(value)
+const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
 
 export default function SettingsPage() {
   const { user, setUser } = useAuth()
@@ -96,7 +98,10 @@ export default function SettingsPage() {
     e.preventDefault()
     setSavingProfile(true)
     try {
-      const res = await axios.put(`${API_URL}/auth/me`, profile)
+      const res = await axios.put(`${API_URL}/auth/me`, {
+        ...profile,
+        default_refill_rate: numberOrZero(profile.default_refill_rate),
+      })
       setUser(prev => prev ? {
         ...prev,
         shop_name: res.data.shop_name,
@@ -244,7 +249,7 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Default Refill Rate per Bottle</label>
-              <input type="number" min="1" value={profile.default_refill_rate} onChange={e => setProfile({ ...profile, default_refill_rate: Number(e.target.value) })} className="input" required />
+              <input type="number" min="1" value={profile.default_refill_rate} onChange={e => setProfile({ ...profile, default_refill_rate: numberOrEmpty(e.target.value) })} className="input" required />
               <p className="text-xs text-gray-500 mt-1">This default rate is auto-filled for walk-in refills.</p>
             </div>
             <button type="submit" disabled={savingProfile} className="btn btn-primary inline-flex items-center gap-2">

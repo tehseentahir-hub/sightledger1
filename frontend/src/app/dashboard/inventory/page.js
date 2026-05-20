@@ -6,6 +6,9 @@ import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
+const numberOrEmpty = (value) => value === '' ? '' : Number(value)
+const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
+
 export default function InventoryPage() {
   const [inventory, setInventory] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -38,7 +41,10 @@ export default function InventoryPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await axios.put(`${API_URL}/inventory`, form)
+      await axios.put(`${API_URL}/inventory`, {
+        ...form,
+        count: numberOrZero(form.count),
+      })
       setShowModal(false)
       setForm({ action: 'add', count: 1 })
       loadInventory()
@@ -181,7 +187,7 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Number of Bottles</label>
-                <input type="number" min="1" value={form.count} onChange={e => setForm({...form, count: Number(e.target.value)})} className="input" required />
+                <input type="number" min="1" value={form.count} onChange={e => setForm({...form, count: numberOrEmpty(e.target.value)})} className="input" required />
               </div>
               <button type="submit" className="btn btn-primary w-full py-3">Update Inventory</button>
             </form>
