@@ -113,7 +113,7 @@ const getDashboard = async (req, res) => {
                 WHERE shop_id = ?
                 GROUP BY customer_id
              ) p ON p.customer_id = c.id
-            WHERE c.shop_id = ? AND c.payment_type = 'credit'`,
+            WHERE c.shop_id = ?`,
           [shop_id, shop_id, shop_id]
         ),
         pGet(
