@@ -1,20 +1,61 @@
 const db = require('../config/db');
 
+const ensureInventoryRow = (shop_id, callback) => {
+  db.get('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id], (err, inventory) => {
+    if (err) return callback(err);
+    if (inventory) return callback(null, inventory);
+
+    db.run(
+      'INSERT INTO bottles_inventory (shop_id, total_bottles, bottles_with_customers, bottles_in_shop, lost_damaged) VALUES (?, 50, 0, 50, 0)',
+      [shop_id],
+      (createErr) => {
+        if (createErr) return callback(createErr);
+        db.get('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id], (fetchErr, createdInventory) => {
+          callback(fetchErr, createdInventory || { shop_id, total_bottles: 50, bottles_with_customers: 0, bottles_in_shop: 50, lost_damaged: 0 });
+        });
+      }
+    );
+  });
+};
+
+const recalculateInventory = (shop_id, callback) => {
+  ensureInventoryRow(shop_id, (inventoryErr, inventory) => {
+    if (inventoryErr) return callback(inventoryErr);
+
+    db.get(
+      'SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as with_customers FROM customers WHERE shop_id = ? AND is_active = 1',
+      [shop_id],
+      (sumErr, row) => {
+        if (sumErr) return callback(sumErr);
+
+        const total = Number(inventory?.total_bottles || 0);
+        const lost = Number(inventory?.lost_damaged || 0);
+        const withCustomers = Number(row?.with_customers || 0);
+        const inShop = Math.max(0, total - lost - withCustomers);
+
+        db.run(
+          'UPDATE bottles_inventory SET bottles_with_customers = ?, bottles_in_shop = ? WHERE shop_id = ?',
+          [withCustomers, inShop, shop_id],
+          (updateErr) => {
+            if (updateErr) return callback(updateErr);
+            callback(null, {
+              ...inventory,
+              bottles_with_customers: withCustomers,
+              bottles_in_shop: inShop,
+            });
+          }
+        );
+      }
+    );
+  });
+};
+
 const getInventory = (req, res) => {
   const { shop_id } = req.user;
 
-  db.get('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id], (err, inventory) => {
+  recalculateInventory(shop_id, (err, inventory) => {
     if (err) return res.status(500).json({ message: 'Error fetching inventory', error: err.message });
-
-    if (!inventory) {
-      db.run('INSERT INTO bottles_inventory (shop_id, total_bottles, bottles_with_customers, bottles_in_shop) VALUES (?, 50, 0, 50)', [shop_id], (err) => {
-        db.get('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id], (err, inv) => {
-          res.json(inv);
-        });
-      });
-    } else {
-      res.json(inventory);
-    }
+    res.json(inventory);
   });
 };
 
@@ -77,44 +118,12 @@ const getBottlesByCustomer = (req, res) => {
 const reconcileInventory = (req, res) => {
   const { shop_id } = req.user;
 
-  db.get('SELECT total_bottles, lost_damaged FROM bottles_inventory WHERE shop_id = ?', [shop_id], (invErr, inv) => {
-    if (invErr) return res.status(500).json({ message: 'Error fetching inventory', error: invErr.message });
-
-    // If inventory row doesn't exist yet, create it first (defaults).
-    const ensure = (cb) => {
-      if (inv) return cb(inv);
-      db.run(
-        'INSERT INTO bottles_inventory (shop_id, total_bottles, bottles_with_customers, bottles_in_shop, lost_damaged) VALUES (?, 50, 0, 50, 0)',
-        [shop_id],
-        (createErr) => {
-          if (createErr) return res.status(500).json({ message: 'Error creating inventory', error: createErr.message });
-          db.get('SELECT total_bottles, lost_damaged FROM bottles_inventory WHERE shop_id = ?', [shop_id], (e2, inv2) => cb(inv2 || { total_bottles: 50, lost_damaged: 0 }));
-        }
-      );
-    };
-
-    ensure((inventory) => {
-      db.get(
-        'SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as with_customers FROM customers WHERE shop_id = ? AND is_active = 1',
-        [shop_id],
-        (sumErr, row) => {
-          if (sumErr) return res.status(500).json({ message: 'Error recalculating bottles with customers', error: sumErr.message });
-
-          const total = Number(inventory?.total_bottles || 0);
-          const lost = Number(inventory?.lost_damaged || 0);
-          const withCustomers = Number(row?.with_customers || 0);
-          const inShop = Math.max(0, total - lost - withCustomers);
-
-          db.run(
-            'UPDATE bottles_inventory SET bottles_with_customers = ?, bottles_in_shop = ? WHERE shop_id = ?',
-            [withCustomers, inShop, shop_id],
-            function(updateErr) {
-              if (updateErr) return res.status(500).json({ message: 'Error updating inventory totals', error: updateErr.message });
-              res.json({ message: 'Inventory reconciled', bottles_with_customers: withCustomers, bottles_in_shop: inShop });
-            }
-          );
-        }
-      );
+  recalculateInventory(shop_id, (err, inventory) => {
+    if (err) return res.status(500).json({ message: 'Error recalculating inventory', error: err.message });
+    res.json({
+      message: 'Inventory reconciled',
+      bottles_with_customers: Number(inventory?.bottles_with_customers || 0),
+      bottles_in_shop: Number(inventory?.bottles_in_shop || 0),
     });
   });
 };

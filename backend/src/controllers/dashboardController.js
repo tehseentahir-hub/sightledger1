@@ -152,7 +152,7 @@ const getDashboard = async (req, res) => {
           [shop_id, today]
         ),
         pGet(
-          "SELECT COALESCE(SUM(bottles_delivered - bottles_returned), 0) as outstanding FROM deliveries WHERE shop_id = ? AND delivery_type != 'walk_in'",
+          "SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as outstanding FROM customers WHERE shop_id = ? AND is_active = 1",
           [shop_id]
         ),
         pGet(
@@ -357,7 +357,11 @@ const getReports = async (req, res) => {
     }
 
     if (type === 'bottles') {
-      const inventory = await pGet('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id]);
+      const inventoryRow = await pGet('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id]);
+      const withCustomersRow = await pGet(
+        'SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as with_customers FROM customers WHERE shop_id = ? AND is_active = 1',
+        [shop_id]
+      );
       const circulation = await pGet(
         `SELECT
            SUM(bottles_delivered) as total_delivered,
@@ -368,6 +372,18 @@ const getReports = async (req, res) => {
          WHERE shop_id = ? AND delivery_date BETWEEN ? AND ?`,
         [shop_id, start_date, end_date]
       );
+
+      const totalBottles = Number(inventoryRow?.total_bottles || 0);
+      const lostDamaged = Number(inventoryRow?.lost_damaged || 0);
+      const withCustomers = Number(withCustomersRow?.with_customers || 0);
+      const bottlesInShop = Math.max(0, totalBottles - lostDamaged - withCustomers);
+      const inventory = {
+        ...(inventoryRow || {}),
+        total_bottles: totalBottles,
+        lost_damaged: lostDamaged,
+        bottles_with_customers: withCustomers,
+        bottles_in_shop: bottlesInShop,
+      };
 
       return res.json({ inventory: inventory || {}, circulation: circulation || {} });
     }
