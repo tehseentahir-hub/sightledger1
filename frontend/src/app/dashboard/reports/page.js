@@ -59,7 +59,7 @@ function EmptyState({ title = 'No data found', message = 'Try changing the selec
 }
 
 function BarChart({ data = [], valueKey, labelKey = 'day', color = '#16a34a', formatValue = number }) {
-  if (!data.length) return <EmptyState message="Chart ke liye selected period me data nahi mila." />
+  if (!data.length) return <EmptyState message="No chart data found for the selected period." />
 
   const values = data.map((item) => Number(item[valueKey] || 0))
   const max = Math.max(1, ...values)
@@ -88,7 +88,7 @@ function BarChart({ data = [], valueKey, labelKey = 'day', color = '#16a34a', fo
 }
 
 function SplitBars({ data = [] }) {
-  if (!data.length) return <EmptyState message="Home aur walk-in comparison ke liye data nahi mila." />
+  if (!data.length) return <EmptyState message="No home and walk-in comparison data found." />
 
   const max = Math.max(1, ...data.map((item) => Number(item.home_bottles || 0) + Number(item.walkin_bottles || 0)))
   const width = Math.max(360, data.length * 64)
@@ -183,7 +183,7 @@ export default function ReportsPage() {
         setReport(res.data)
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Report load nahi ho saki')
+      setError(err.response?.data?.message || 'Unable to load report right now.')
       setReport(null)
     }
     setLoading(false)
@@ -237,7 +237,7 @@ export default function ReportsPage() {
         <div>
           <p className="text-sm font-medium text-primary">Shop Owner Reports</p>
           <h1 className="text-2xl font-bold text-gray-900">Business Reports</h1>
-          <p className="mt-1 text-sm text-gray-500">Sales, profit, pending payments, customers aur bottles ek simple view me.</p>
+          <p className="mt-1 text-sm text-gray-500">Sales, profit, pending payments, customers, and bottle movement in one simple view.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={loadReport} className="btn btn-secondary inline-flex items-center gap-2">
@@ -264,7 +264,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
             {active?.icon && <active.icon size={18} className="text-primary" />}
             {active?.label}
@@ -272,30 +272,30 @@ export default function ReportsPage() {
 
           {(activeReport === 'monthly' || activeReport === 'profit') ? (
             <>
-              <select value={filter.month} onChange={(e) => setFilter({ ...filter, month: Number(e.target.value) })} className="input w-40">
+              <select value={filter.month} onChange={(e) => setFilter({ ...filter, month: Number(e.target.value) })} className="input w-full sm:w-40">
                 {Array.from({ length: 12 }, (_, index) => (
                   <option key={index + 1} value={index + 1}>{new Date(0, index).toLocaleString('en', { month: 'long' })}</option>
                 ))}
               </select>
-              <select value={filter.year} onChange={(e) => setFilter({ ...filter, year: Number(e.target.value) })} className="input w-28">
+              <select value={filter.year} onChange={(e) => setFilter({ ...filter, year: Number(e.target.value) })} className="input w-full sm:w-28">
                 {[2024, 2025, 2026, 2027].map((year) => <option key={year} value={year}>{year}</option>)}
               </select>
             </>
           ) : activeReport !== 'customers' ? (
             <>
-              <input type="date" value={filter.start_date} onChange={(e) => setFilter({ ...filter, start_date: e.target.value })} className="input w-40" />
-              <input type="date" value={filter.end_date} onChange={(e) => setFilter({ ...filter, end_date: e.target.value })} className="input w-40" />
+              <input type="date" value={filter.start_date} onChange={(e) => setFilter({ ...filter, start_date: e.target.value })} className="input w-full sm:w-40" />
+              <input type="date" value={filter.end_date} onChange={(e) => setFilter({ ...filter, end_date: e.target.value })} className="input w-full sm:w-40" />
             </>
           ) : (
-            <div className="flex w-full max-w-3xl gap-2">
-              <div className="relative w-full max-w-sm">
+            <div className="flex w-full max-w-3xl flex-col gap-2 sm:flex-row">
+              <div className="relative w-full sm:max-w-sm">
                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" placeholder="Search customer, phone, address..." />
               </div>
               <button
                 type="button"
                 onClick={() => setDepositOnly(!depositOnly)}
-                className={`btn inline-flex items-center gap-2 ${depositOnly ? 'btn-primary' : 'btn-secondary'}`}
+                className={`btn w-full justify-center sm:w-auto ${depositOnly ? 'btn-primary' : 'btn-secondary'}`}
               >
                 <Filter size={16} />
                 Security Deposit Only
@@ -358,7 +358,7 @@ export default function ReportsPage() {
               <ReportTable rows={report.expense_breakdown || []} columns={[
                 ['expense_type', 'Type'],
                 ['total', 'Amount', currency],
-              ]} emptyMessage="Is month me expenses record nahi huay." />
+          ]} emptyMessage="No expenses were recorded for this month." />
             </div>
           </div>
         </div>
@@ -378,7 +378,7 @@ export default function ReportsPage() {
             ['total_billed', 'Billed', currency],
             ['total_paid', 'Paid', currency],
             ['outstanding', 'Pending', currency],
-          ]} emptyMessage="Kisi customer ki payment pending nahi." />
+          ]} emptyMessage="No customer payments are pending." />
         </div>
       )}
 
@@ -395,7 +395,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={() => setDepositOnly(!depositOnly)}
-              className={`btn inline-flex items-center gap-2 ${depositOnly ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn w-full justify-center sm:w-auto ${depositOnly ? 'btn-primary' : 'btn-secondary'}`}
             >
               <Filter size={16} />
               Security Deposit Only
@@ -410,7 +410,7 @@ export default function ReportsPage() {
             ['total_bottles_outside', 'Bottles Outside'],
             ['pending_amount', 'Pending', currency],
             ['is_active', 'Status', (value) => value ? 'Active' : 'Inactive'],
-          ]} emptyMessage="Search ke mutabiq customer nahi mila." />
+          ]} emptyMessage="No customer matched your search." />
         </div>
       )}
 
@@ -429,7 +429,7 @@ export default function ReportsPage() {
             ['amount', 'Amount', currency],
             ['delivery_type', 'Type', (value) => value === 'walk_in' ? 'Walk-in' : 'Home'],
             ['rider_name', 'Rider'],
-          ]} emptyMessage="Selected date par delivery nahi mili." />
+          ]} emptyMessage="No deliveries were found for the selected date range." />
         </div>
       )}
 
@@ -494,8 +494,8 @@ function ReportTable({ rows = [], columns = [], emptyMessage = 'No rows found.' 
   if (!rows.length) return <EmptyState message={emptyMessage} />
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-      <div className="overflow-x-auto">
+    <div>
+      <div className="hidden overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm md:block">
         <table className="w-full min-w-[720px]">
           <thead className="bg-gray-50">
             <tr>
@@ -525,6 +525,34 @@ function ReportTable({ rows = [], columns = [], emptyMessage = 'No rows found.' 
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {sortedRows.map((row, index) => {
+          const titleColumn = columns[0]
+          const titleValue = titleColumn
+            ? (titleColumn[2] ? titleColumn[2](row[titleColumn[0]], row) : row[titleColumn[0]])
+            : `Row ${index + 1}`
+
+          return (
+            <div key={row.id || `${index}-${row.name || row.day || row.customer_name}`} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate font-semibold text-gray-900">{titleValue || '-'}</p>
+                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">#{index + 1}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+                {columns.slice(1).map(([key, label, format]) => (
+                  <div key={`${label}-${key}`} className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+                    <span className="text-gray-500">{label}</span>
+                    <span className="max-w-[60%] truncate text-right font-medium text-gray-800">
+                      {format ? format(row[key], row) : (row[key] || '-')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

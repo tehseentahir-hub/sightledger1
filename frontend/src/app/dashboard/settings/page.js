@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../../../context/AuthContext'
 import CenterDialog from '../../../components/CenterDialog'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 const emptyRider = { name: '', is_active: true }
 const emptyCashier = { name: '', phone: '', password: '', is_active: true }
@@ -106,7 +106,7 @@ export default function SettingsPage() {
       showSuccess('Shop settings updated successfully.')
       loadSettings()
     } catch (err) {
-      showError(err.response?.data?.message || 'Unable to save settings right now.')
+      showError(getRequestErrorMessage(err, 'Unable to save settings right now.'))
     }
     setSavingProfile(false)
   }
@@ -125,7 +125,7 @@ export default function SettingsPage() {
       setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
       showSuccess('Owner password updated successfully.')
     } catch (err) {
-      showError(err.response?.data?.message || 'Unable to update password right now.')
+      showError(getRequestErrorMessage(err, 'Unable to update password right now.'))
     }
     setSavingPassword(false)
   }
@@ -142,7 +142,7 @@ export default function SettingsPage() {
       setEditingRiderId(null)
       loadStaff()
     } catch (err) {
-      showError(err.response?.data?.message || 'Unable to save rider.')
+      showError(getRequestErrorMessage(err, 'Unable to save rider.'))
     }
   }
 
@@ -162,7 +162,7 @@ export default function SettingsPage() {
       setEditingCashierId(null)
       loadStaff()
     } catch (err) {
-      showError(err.response?.data?.message || 'Unable to save cashier.')
+      showError(getRequestErrorMessage(err, 'Unable to save cashier.'))
     }
   }
 
@@ -198,7 +198,7 @@ export default function SettingsPage() {
           loadStaff()
           showSuccess(`${label[0].toUpperCase()}${label.slice(1)} deleted.`)
         } catch (err) {
-          showError(err.response?.data?.message || `Unable to delete ${label}.`)
+          showError(getRequestErrorMessage(err, `Unable to delete ${label}.`))
         }
       },
     })

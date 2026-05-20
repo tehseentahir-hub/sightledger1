@@ -15,6 +15,16 @@ const sanitizeStaff = (member) => {
   };
 };
 
+const staffWriteError = (err, res, action = 'saving') => {
+  const message = String(err?.message || '');
+  if (message.includes('UNIQUE constraint failed: staff.phone')) {
+    return res.status(400).json({
+      message: 'This cashier phone or login ID is already used. Please use a different login ID.',
+    });
+  }
+  return res.status(500).json({ message: `Error ${action} staff`, error: err.message });
+};
+
 const getStaff = (req, res) => {
   const { shop_id } = req.user;
 
@@ -58,7 +68,7 @@ const createStaff = (req, res) => {
     'INSERT INTO staff (shop_id, name, phone, role, password) VALUES (?, ?, ?, ?, ?)',
     [shop_id, name.trim(), staffPhone, normalizedRole, hashedPassword],
     function(err) {
-      if (err) return res.status(500).json({ message: 'Error creating staff', error: err.message });
+      if (err) return staffWriteError(err, res, 'creating');
       res.status(201).json({ message: 'Staff created successfully', staff_id: this.lastID });
     }
   );
@@ -106,7 +116,7 @@ const updateStaff = (req, res) => {
       `UPDATE staff SET ${updates.join(', ')} WHERE id = ? AND shop_id = ?`,
       params,
       function(updateErr) {
-        if (updateErr) return res.status(500).json({ message: 'Error updating staff', error: updateErr.message });
+        if (updateErr) return staffWriteError(updateErr, res, 'updating');
         res.json({ message: 'Staff updated successfully' });
       }
     );

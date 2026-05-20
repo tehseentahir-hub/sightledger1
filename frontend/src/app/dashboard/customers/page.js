@@ -6,7 +6,7 @@ import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
 import CenterDialog from '../../../components/CenterDialog'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 const initialForm = {
   name: '',
@@ -57,7 +57,7 @@ export default function CustomersPage() {
       setEditId(null)
       loadCustomers()
     } catch (err) {
-      setErrorAlert(err.response?.data?.message || 'Unable to save customer right now.')
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to save customer right now.'))
     }
   }
 
@@ -72,7 +72,7 @@ export default function CustomersPage() {
       await axios.delete(`${API_URL}/customers/${id}`)
       loadCustomers()
     } catch (err) {
-      setErrorAlert(err.response?.data?.message || 'Unable to delete customer.')
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to delete customer.'))
     }
   }
 
@@ -102,7 +102,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
@@ -162,6 +162,42 @@ export default function CustomersPage() {
         </div>
       </div>
 
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="card p-4 text-center text-gray-500">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="card p-4 text-center text-gray-400">No customers found</div>
+        ) : filtered.map(c => (
+          <div key={c.id} className="card p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{c.name}</p>
+                <p className="text-sm text-gray-500 truncate">{c.phone || 'No phone'}</p>
+              </div>
+              <span className={`badge ${c.is_active ? 'badge-success' : 'badge-danger'}`}>
+                {c.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><span className="text-gray-500">Rate</span><p className="font-medium">Rs {c.rate_per_bottle}</p></div>
+              <div><span className="text-gray-500">Payment</span><p className="font-medium capitalize">{c.payment_type}</p></div>
+              <div><span className="text-gray-500">Bottles</span><p className="font-medium">{c.deposit_bottles}</p></div>
+              <div><span className="text-gray-500">Security</span><p className="font-medium">Rs {Number(c.security_deposit_amount || 0).toLocaleString()}</p></div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => handleEdit(c)} className="btn btn-secondary flex-1 justify-center">
+                <Edit size={16} /> Edit
+              </button>
+              {canDelete && (
+                <button onClick={() => setConfirmDialog({ open: true, id: c.id })} className="btn bg-red-600 text-white flex-1 justify-center">
+                  <Trash2 size={16} /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
@@ -185,7 +221,7 @@ export default function CustomersPage() {
                 <label className="block text-sm font-medium mb-1">Address</label>
                 <textarea value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="input" rows={2} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Bottle Type</label>
                   <select value={form.bottle_type} onChange={e => setForm({...form, bottle_type: e.target.value})} className="input">
@@ -199,7 +235,7 @@ export default function CustomersPage() {
                   <input type="number" value={form.rate_per_bottle} onChange={e => setForm({...form, rate_per_bottle: Number(e.target.value)})} className="input" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Payment Type</label>
                   <select value={form.payment_type} onChange={e => setForm({...form, payment_type: e.target.value})} className="input">

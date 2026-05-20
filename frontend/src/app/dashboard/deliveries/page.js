@@ -8,7 +8,7 @@ import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
 import CenterDialog from '../../../components/CenterDialog'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 export default function DeliveriesPage() {
   const { user } = useAuth()
@@ -113,7 +113,7 @@ export default function DeliveriesPage() {
       loadDeliveries()
     } catch (err) {
       console.error(err)
-      setErrorAlert(err.response?.data?.message || err.message || 'Unable to save delivery.')
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to save delivery.'))
     }
   }
 
@@ -122,7 +122,7 @@ export default function DeliveriesPage() {
       await axios.delete(`${API_URL}/deliveries/${id}`)
       loadDeliveries()
       loadCustomers()
-    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to delete delivery.') }
+    } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to delete delivery.')) }
   }
 
   const openInvoice = (customerId) => {
@@ -212,11 +212,11 @@ export default function DeliveriesPage() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold">Deliveries</h1>
         <div className="flex gap-2 items-center flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 sm:flex sm:items-center gap-2 w-full lg:w-auto">
             <Calendar size={20} className="text-gray-400" />
-            <input type="date" value={filter.start_date} onChange={e => setFilter({...filter, start_date: e.target.value})} className="input w-36" placeholder="From" />
-            <span className="text-gray-400">to</span>
-            <input type="date" value={filter.end_date} onChange={e => setFilter({...filter, end_date: e.target.value})} className="input w-36" placeholder="To" />
+            <input type="date" value={filter.start_date} onChange={e => setFilter({...filter, start_date: e.target.value})} className="input w-full sm:w-36" placeholder="From" />
+            <span className="text-gray-400 hidden sm:inline">to</span>
+            <input type="date" value={filter.end_date} onChange={e => setFilter({...filter, end_date: e.target.value})} className="input w-full sm:w-36" placeholder="To" />
           </div>
           <button onClick={loadDeliveries} className="btn btn-secondary">Filter</button>
           <button onClick={() => { setForm({ customer_id: '', is_walkin: false, walkin_name: '', walkin_rate_per_bottle: defaultRefillRate, rider_id: '', delivery_date: new Date().toISOString().split('T')[0], bottles_delivered: 1, bottles_returned: 0, delivery_type: 'home_delivery', notes: '' }); setCustomerSearch(''); setShowModal(true) }} className="btn btn-primary">
@@ -250,7 +250,7 @@ export default function DeliveriesPage() {
       </div>
 
       {/* Deliveries List */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
@@ -315,6 +315,49 @@ export default function DeliveriesPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="card p-4 text-center text-gray-500">Loading...</div>
+        ) : deliveries.length === 0 ? (
+          <div className="card p-4 text-center text-gray-400">No deliveries</div>
+        ) : deliveries.map(d => (
+          <div key={d.id} className="card p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{d.customer_name || (d.delivery_type === 'walk_in' ? 'Walk-in' : '-')}</p>
+                <p className="text-sm text-gray-500">{d.delivery_date} {d.rider_name ? `- ${d.rider_name}` : ''}</p>
+              </div>
+              <span className={`badge ${d.delivery_type === 'home_delivery' ? 'badge-info' : 'badge-success'}`}>
+                {d.delivery_type === 'home_delivery' ? 'Home' : 'Walk-in'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm text-center">
+              <div className="rounded-lg bg-blue-50 p-2"><span className="text-gray-500">Delivered</span><p className="font-bold text-blue-600">{d.bottles_delivered}</p></div>
+              <div className="rounded-lg bg-green-50 p-2"><span className="text-gray-500">Returned</span><p className="font-bold text-green-600">{d.bottles_returned}</p></div>
+              <div className="rounded-lg bg-gray-50 p-2"><span className="text-gray-500">Net</span><p className="font-bold">{d.bottles_delivered - d.bottles_returned}</p></div>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500">Amount</span>
+              <span className="font-semibold">
+                {d.delivery_type === 'walk_in' ? 'Cash' : `Rs ${((d.bottles_delivered || 0) * (d.rate_per_bottle || 0)).toLocaleString()}`}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {d.delivery_type !== 'walk_in' && (
+                <button onClick={() => openInvoice(d.customer_id)} className="btn btn-secondary flex-1 justify-center">
+                  <FileText size={16} /> Invoice
+                </button>
+              )}
+              {canDelete && (
+                <button onClick={() => setConfirmDialog({ open: true, id: d.id })} className="btn bg-red-600 text-white flex-1 justify-center">
+                  <X size={16} /> Delete
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Add Delivery Modal */}

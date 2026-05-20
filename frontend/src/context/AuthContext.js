@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
-import { API_URL } from '../lib/api'
+import { API_URL, getRequestErrorMessage } from '../lib/api'
 
 const AuthContext = createContext()
 
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
       setUser(res.data.user)
       return { success: true, user: res.data.user }
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || 'Login failed' }
+      return { success: false, message: getRequestErrorMessage(error, 'Login failed. Please check email, password, and role.') }
     }
   }
 

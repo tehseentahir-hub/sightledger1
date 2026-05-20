@@ -20,6 +20,7 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--background);
   color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 * {
@@ -43,6 +44,9 @@ body {
   font-weight: 500;
   transition: all 0.2s;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-primary {
@@ -120,5 +124,20 @@ body {
 @media print {
   .no-print {
     display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .card {
+    border-radius: 8px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px;
   }
 }

@@ -4,7 +4,7 @@ import axios from 'axios'
 import { Plus, X } from 'lucide-react'
 import CenterAlert from '../../../components/CenterAlert'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 const expenseTypes = [
   { value: 'fuel', label: 'Fuel' },
@@ -60,7 +60,7 @@ export default function ExpensesPage() {
       setForm({ expense_type: 'fuel', amount: '', description: '', expense_date: new Date().toISOString().split('T')[0] })
       loadExpenses()
       loadSummary()
-    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record expense right now.') }
+    } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to record expense right now.')) }
   }
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0)
@@ -69,13 +69,13 @@ export default function ExpensesPage() {
     <div>
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold">Expenses</h1>
-        <div className="flex gap-2 items-center">
-          <select value={filter.month} onChange={e => setFilter({...filter, month: Number(e.target.value)})} className="input w-24">
+        <div className="grid grid-cols-3 sm:flex gap-2 items-center w-full lg:w-auto">
+          <select value={filter.month} onChange={e => setFilter({...filter, month: Number(e.target.value)})} className="input w-full sm:w-24">
             {Array.from({ length: 12 }, (_, i) => (
               <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('en', { month: 'short' })}</option>
             ))}
           </select>
-          <select value={filter.year} onChange={e => setFilter({...filter, year: Number(e.target.value)})} className="input w-24">
+          <select value={filter.year} onChange={e => setFilter({...filter, year: Number(e.target.value)})} className="input w-full sm:w-24">
             {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <button onClick={() => setShowModal(true)} className="btn btn-primary">

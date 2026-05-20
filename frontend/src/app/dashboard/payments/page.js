@@ -6,7 +6,7 @@ import jsPDF from 'jspdf'
 import CenterAlert from '../../../components/CenterAlert'
 import CenterDialog from '../../../components/CenterDialog'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([])
@@ -100,7 +100,7 @@ export default function PaymentsPage() {
             loadPayments()
             loadOutstanding()
             setSuccessAlert('Payment recorded successfully.')
-          } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record payment.') }
+          } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to record payment.')) }
         }
       })
     }
@@ -113,7 +113,7 @@ export default function PaymentsPage() {
       loadPayments()
       loadOutstanding()
       setSuccessAlert('Payment recorded successfully.')
-    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record payment.') }
+    } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to record payment.')) }
   }
 
   const viewLedger = async (customerId) => {
@@ -121,7 +121,7 @@ export default function PaymentsPage() {
       const res = await axios.get(`${API_URL}/payments/customer/${customerId}`)
       setLedgerData(res.data)
       setShowLedger(customerId)
-    } catch (err) { setErrorAlert('Unable to load ledger.') }
+    } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to load ledger.')) }
   }
 
   const getCustomerWithBalance = (customerId) => {

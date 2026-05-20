@@ -1,19 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Download } from 'lucide-react'
+import { Download, Search } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 export default function InvoicePage() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState([])
   const [shopProfile, setShopProfile] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
@@ -165,7 +166,7 @@ export default function InvoicePage() {
 
     } catch (err) {
       console.error(err)
-      setErrorAlert('Unable to generate invoice right now.')
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to generate invoice right now.'))
     }
     setLoading(false)
   }
@@ -184,6 +185,18 @@ export default function InvoicePage() {
     { value: 11, label: 'November' },
     { value: 12, label: 'December' }
   ]
+  const selectedCustomerRecord = customers.find(c => Number(c.id) === Number(selectedCustomer))
+  const customerQuery = customerSearch.trim().toLowerCase()
+  const filteredCustomers = customers
+    .filter(c => {
+      if (!customerQuery) return true
+      return (
+        c.name?.toLowerCase().includes(customerQuery) ||
+        String(c.phone || '').toLowerCase().includes(customerQuery) ||
+        String(c.address || '').toLowerCase().includes(customerQuery)
+      )
+    })
+    .slice(0, 12)
 
   return (
     <div>
@@ -191,20 +204,44 @@ export default function InvoicePage() {
 
       <div className="card p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Select Customer</label>
-            <select
-              value={selectedCustomer}
-              onChange={e => setSelectedCustomer(e.target.value)}
-              className="input"
-            >
-              <option value="">Select Customer</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.payment_type})
-                </option>
+          <div className="md:col-span-3">
+            <label className="block text-sm font-medium mb-2">Search Customer</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                value={customerSearch}
+                onChange={e => {
+                  setCustomerSearch(e.target.value)
+                  setSelectedCustomer('')
+                }}
+                className="input pl-10"
+                placeholder="Type customer name, phone, or address..."
+              />
+            </div>
+            <div className="mt-2 border border-gray-200 rounded-lg max-h-60 overflow-y-auto">
+              {filteredCustomers.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-gray-500">No customer found</p>
+              ) : filteredCustomers.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomer(String(c.id))
+                    setCustomerSearch(`${c.name} - ${c.phone || 'No phone'}`)
+                  }}
+                  className={`w-full text-left px-3 py-3 text-sm hover:bg-blue-50 ${Number(selectedCustomer) === Number(c.id) ? 'bg-blue-50' : ''}`}
+                >
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-gray-500"> - {c.phone || 'No phone'} - {c.payment_type} - Rs {c.rate_per_bottle}/bottle</span>
+                </button>
               ))}
-            </select>
+            </div>
+            {selectedCustomerRecord && (
+              <p className="mt-2 text-xs text-green-700">
+                Selected: {selectedCustomerRecord.name} ({selectedCustomerRecord.phone || 'No phone'})
+              </p>
+            )}
           </div>
 
           <div>
@@ -256,7 +293,7 @@ export default function InvoicePage() {
       <div className="card p-6">
         <h2 className="font-semibold mb-4">Instructions</h2>
         <ul className="text-gray-600 space-y-2 text-sm">
-          <li>1. Select a customer from the dropdown</li>
+          <li>1. Search customer by name, phone, or address</li>
           <li>2. Choose the month and year for the invoice</li>
           <li>3. Click "Generate PDF Invoice" button</li>
           <li>4. The invoice will be downloaded as a PDF file</li>

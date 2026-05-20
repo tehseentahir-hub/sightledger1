@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex w-full max-w-full overflow-x-hidden">
       {/* Mobile sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -106,7 +106,7 @@ export default function DashboardLayout({ children }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 min-h-screen p-4 lg:p-8 pt-16 lg:pt-8">
+      <main className="flex-1 min-w-0 w-full max-w-full min-h-screen p-4 lg:p-8 pt-16 lg:pt-8 overflow-x-hidden">
         {children}
       </main>
 

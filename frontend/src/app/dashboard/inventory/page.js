@@ -4,7 +4,7 @@ import axios from 'axios'
 import { Package, Plus, X, Users, ArrowRight } from 'lucide-react'
 import CenterAlert from '../../../components/CenterAlert'
 
-import { API_URL } from '../../../lib/api'
+import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState(null)
@@ -42,7 +42,7 @@ export default function InventoryPage() {
       setShowModal(false)
       setForm({ action: 'add', count: 1 })
       loadInventory()
-    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to update inventory right now.') }
+    } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to update inventory right now.')) }
   }
 
   if (loading) {
@@ -61,8 +61,8 @@ export default function InventoryPage() {
       </div>
 
       {/* Visual Flow Representation */}
-      <div className="bg-white rounded-2xl p-8 mb-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="bg-white rounded-2xl p-4 sm:p-8 mb-6 shadow-sm border border-gray-100">
+        <div className="grid grid-cols-1 lg:flex lg:items-center lg:justify-between gap-4">
           {/* Total Bottles */}
           <div className="flex items-center gap-4 flex-1 min-w-[200px]">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center">
@@ -74,7 +74,7 @@ export default function InventoryPage() {
             </div>
           </div>
 
-          <ArrowRight className="w-8 h-8 text-gray-300 flex-shrink-0" />
+          <ArrowRight className="w-8 h-8 text-gray-300 flex-shrink-0 hidden lg:block" />
 
           {/* With Customers - Clickable */}
           <button
@@ -91,7 +91,7 @@ export default function InventoryPage() {
             </div>
           </button>
 
-          <ArrowRight className="w-8 h-8 text-gray-300 flex-shrink-0" />
+          <ArrowRight className="w-8 h-8 text-gray-300 flex-shrink-0 hidden lg:block" />
 
           {/* In Shop */}
           <div className="flex items-center gap-4 flex-1 min-w-[200px] p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
