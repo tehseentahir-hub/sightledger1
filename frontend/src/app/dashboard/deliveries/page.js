@@ -5,6 +5,7 @@ import { Plus, X, Calendar, FileText } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useAuth } from '../../../context/AuthContext'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -34,6 +35,7 @@ export default function DeliveriesPage() {
     end_date: ''
   })
   const [customerSearch, setCustomerSearch] = useState('')
+  const [errorAlert, setErrorAlert] = useState('')
 
   const canDelete = user?.role === 'shop_owner' || user?.role === 'super_admin'
   const defaultRefillRate = Number(user?.default_refill_rate || 100)
@@ -72,8 +74,8 @@ export default function DeliveriesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.bottles_delivered || form.bottles_delivered < 1) return alert('Enter bottles delivered')
-    if (!form.is_walkin && !form.customer_id) return alert('Please select a customer from search results')
+    if (!form.bottles_delivered || form.bottles_delivered < 1) return setErrorAlert('Please enter delivered bottles greater than 0.')
+    if (!form.is_walkin && !form.customer_id) return setErrorAlert('Please select a customer from search results.')
 
     try {
       const deliveryData = {
@@ -109,7 +111,7 @@ export default function DeliveriesPage() {
       loadDeliveries()
     } catch (err) {
       console.error(err)
-      alert('Error: ' + (err.response?.data?.message || err.message))
+      setErrorAlert(err.response?.data?.message || err.message || 'Unable to save delivery.')
     }
   }
 
@@ -119,7 +121,7 @@ export default function DeliveriesPage() {
       await axios.delete(`${API_URL}/deliveries/${id}`)
       loadDeliveries()
       loadCustomers()
-    } catch (err) { alert('Error deleting delivery') }
+    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to delete delivery.') }
   }
 
   const openInvoice = (customerId) => {
@@ -316,15 +318,15 @@ export default function DeliveriesPage() {
 
       {/* Add Delivery Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">New Delivery</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               {/* Walk-in Toggle */}
               <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                 <input
@@ -468,7 +470,7 @@ export default function DeliveriesPage() {
 
       {/* Invoice Modal */}
       {showInvoiceModal && invoiceCustomer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Generate Invoice</h2>
@@ -487,6 +489,7 @@ export default function DeliveriesPage() {
           </div>
         </div>
       )}
+      <CenterAlert open={!!errorAlert} title="Delivery Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }

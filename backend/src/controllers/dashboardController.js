@@ -1,5 +1,20 @@
 const db = require('../config/db');
 
+const PK_TIMEZONE = 'Asia/Karachi';
+const toPkDateText = (date = new Date()) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: PK_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+const addDays = (dateText, days) => {
+  const [y, m, d] = String(dateText).split('-').map(Number);
+  const date = new Date(Date.UTC(y, (m || 1) - 1, d || 1));
+  date.setUTCDate(date.getUTCDate() + days);
+  return toPkDateText(date);
+};
+
 const pGet = (sql, params = []) =>
   new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
@@ -19,21 +34,17 @@ const pAll = (sql, params = []) =>
 const getDashboard = async (req, res) => {
   try {
     const { shop_id } = req.user;
-    const today = new Date().toISOString().split('T')[0];
-    const last7 = new Date();
-    last7.setDate(last7.getDate() - 6);
-    const last7Start = last7.toISOString().split('T')[0];
-    const monthStartDate = new Date();
-    monthStartDate.setDate(1);
-    const monthStart = monthStartDate.toISOString().split('T')[0];
+    const today = toPkDateText();
+    const last7Start = addDays(today, -6);
+    const monthStart = `${today.slice(0, 8)}01`;
 
     const buildDateSeries = (start, end) => {
       const series = [];
-      const cursor = new Date(start);
-      const final = new Date(end);
+      let cursor = String(start);
+      const final = String(end);
       while (cursor <= final) {
-        series.push(cursor.toISOString().split('T')[0]);
-        cursor.setDate(cursor.getDate() + 1);
+        series.push(cursor);
+        cursor = addDays(cursor, 1);
       }
       return series;
     };
@@ -337,7 +348,7 @@ const getReports = async (req, res) => {
            GROUP BY customer_id
          ) p ON p.customer_id = c.id
          WHERE c.shop_id = ?
-         HAVING outstanding > 0
+           AND (COALESCE(b.total_billed, 0) - COALESCE(p.total_paid, 0)) > 0
          ORDER BY outstanding DESC`,
         [shop_id, shop_id, shop_id]
       );

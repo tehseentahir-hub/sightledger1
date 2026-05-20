@@ -28,7 +28,7 @@ function LoginContent() {
     setError('')
     setLoading(true)
 
-    const result = await login(email, password)
+    const result = await login(email, password, loginRole)
     if (result.success) {
       router.push(result.user?.role === 'super_admin' ? '/admin' : '/dashboard')
     } else {

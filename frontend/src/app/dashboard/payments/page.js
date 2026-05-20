@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, X, FileText, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
 import jsPDF from 'jspdf'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -25,6 +26,7 @@ export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState('outstanding')
   const [selectedSummary, setSelectedSummary] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
+  const [errorAlert, setErrorAlert] = useState('')
 
   useEffect(() => {
     loadCustomers()
@@ -73,7 +75,7 @@ export default function PaymentsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.customer_id) return alert('Select a customer')
+    if (!form.customer_id) return setErrorAlert('Please select a customer.')
 
     // Show current pending before payment
     const customer = customers.find(c => c.id === parseInt(form.customer_id))
@@ -95,7 +97,7 @@ export default function PaymentsPage() {
       loadPayments()
       loadOutstanding()
       alert('Payment recorded successfully!')
-    } catch (err) { alert('Error: ' + (err.response?.data?.message || 'Error recording payment')) }
+    } catch (err) { setErrorAlert(err.response?.data?.message || 'Unable to record payment.') }
   }
 
   const viewLedger = async (customerId) => {
@@ -103,7 +105,7 @@ export default function PaymentsPage() {
       const res = await axios.get(`${API_URL}/payments/customer/${customerId}`)
       setLedgerData(res.data)
       setShowLedger(customerId)
-    } catch (err) { alert('Error loading ledger') }
+    } catch (err) { setErrorAlert('Unable to load ledger.') }
   }
 
   const getCustomerWithBalance = (customerId) => {
@@ -264,8 +266,8 @@ export default function PaymentsPage() {
 
       {/* Ledger Modal */}
       {showLedger && ledgerData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-2xl max-h-[95svh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Ledger - {ledgerData.customer.name}</h2>
               <button onClick={() => setShowLedger(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
@@ -309,13 +311,13 @@ export default function PaymentsPage() {
 
       {/* Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">Record Payment</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Customer *</label>
                 <input
@@ -414,6 +416,7 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
+      <CenterAlert open={!!errorAlert} title="Payment Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }

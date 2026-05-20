@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Plus, Search, Edit, Trash2, X, Upload } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
+import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL } from '../../../lib/api'
 
@@ -26,6 +27,7 @@ export default function CustomersPage() {
   const [form, setForm] = useState(initialForm)
   const [editId, setEditId] = useState(null)
   const [search, setSearch] = useState('')
+  const [errorAlert, setErrorAlert] = useState('')
   const canDelete = user?.type !== 'staff'
 
   useEffect(() => {
@@ -52,7 +54,9 @@ export default function CustomersPage() {
       setForm(initialForm)
       setEditId(null)
       loadCustomers()
-    } catch (err) { alert('Error saving customer') }
+    } catch (err) {
+      setErrorAlert(err.response?.data?.message || 'Unable to save customer right now.')
+    }
   }
 
   const handleEdit = (c) => {
@@ -66,7 +70,9 @@ export default function CustomersPage() {
     try {
       await axios.delete(`${API_URL}/customers/${id}`)
       loadCustomers()
-    } catch (err) { alert('Error deleting customer') }
+    } catch (err) {
+      setErrorAlert(err.response?.data?.message || 'Unable to delete customer.')
+    }
   }
 
   const filtered = customers.filter(c =>
@@ -157,15 +163,15 @@ export default function CustomersPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[95svh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b">
               <h2 className="text-xl font-bold">{editId ? 'Edit Customer' : 'Add Customer'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Name *</label>
                 <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="input" required />
@@ -220,6 +226,7 @@ export default function CustomersPage() {
           </div>
         </div>
       )}
+      <CenterAlert open={!!errorAlert} title="Customer Error" message={errorAlert} onClose={() => setErrorAlert('')} />
     </div>
   )
 }
