@@ -374,7 +374,8 @@ export default function DeliveriesPage() {
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               {/* Walk-in Toggle */}
               <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
                 <input
@@ -510,7 +511,11 @@ export default function DeliveriesPage() {
                 <label className="block text-sm font-medium mb-1">Notes</label>
                 <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="input" rows={2} />
               </div>
-              <button type="submit" className="btn btn-primary w-full py-3">Record Delivery</button>
+              </div>
+
+              <div className="border-t bg-white p-4 sm:p-6">
+                <button type="submit" className="btn btn-primary w-full py-3">Record Delivery</button>
+              </div>
             </form>
           </div>
         </div>
