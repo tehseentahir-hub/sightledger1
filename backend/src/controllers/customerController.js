@@ -110,26 +110,55 @@ const updateCustomer = (req, res) => {
   const { shop_id } = req.user;
   const { name, phone, address, bottle_type, rate_per_bottle, payment_type, deposit_bottles, security_deposit_amount, is_active } = req.body;
 
-  db.run(
-    'UPDATE customers SET name = ?, phone = ?, address = ?, bottle_type = ?, rate_per_bottle = ?, payment_type = ?, deposit_bottles = ?, security_deposit_amount = ?, is_active = ? WHERE id = ? AND shop_id = ?',
-    [name, phone, address, bottle_type, rate_per_bottle, payment_type, deposit_bottles, Number(security_deposit_amount || 0), is_active ? 1 : 0, id, shop_id],
-    function(err) {
-      if (err) return res.status(500).json({ message: 'Error updating customer', error: err.message });
-      if (this.changes === 0) return res.status(404).json({ message: 'Customer not found' });
+  db.get('SELECT deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], (fetchErr, existing) => {
+    if (fetchErr) return res.status(500).json({ message: 'Error fetching customer', error: fetchErr.message });
+    if (!existing) return res.status(404).json({ message: 'Customer not found' });
 
-      logAudit({
-        shop_id,
-        actor_id: req.user.id,
-        actor_role: req.user.role || req.user.type || 'shop_owner',
-        action: 'update',
-        entity_type: 'customer',
-        entity_id: Number(id),
-        details: { name, phone, payment_type, rate_per_bottle, security_deposit_amount: Number(security_deposit_amount || 0), is_active },
-      });
+    const prevDeposit = Number(existing.deposit_bottles || 0);
+    const nextDeposit = Number(deposit_bottles || 0);
+    const delta = nextDeposit - prevDeposit;
 
-      res.json({ message: 'Customer updated successfully' });
-    }
-  );
+    db.run(
+      'UPDATE customers SET name = ?, phone = ?, address = ?, bottle_type = ?, rate_per_bottle = ?, payment_type = ?, deposit_bottles = ?, security_deposit_amount = ?, is_active = ? WHERE id = ? AND shop_id = ?',
+      [name, phone, address, bottle_type, rate_per_bottle, payment_type, nextDeposit, Number(security_deposit_amount || 0), is_active ? 1 : 0, id, shop_id],
+      function(err) {
+        if (err) return res.status(500).json({ message: 'Error updating customer', error: err.message });
+        if (this.changes === 0) return res.status(404).json({ message: 'Customer not found' });
+
+        if (delta !== 0) {
+          // Keep bottles_inventory in sync when deposit bottles change.
+          // delta > 0 => move bottles from shop -> customers
+          // delta < 0 => move bottles from customers -> shop
+          db.run(
+            'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers + ?, bottles_in_shop = bottles_in_shop - ? WHERE shop_id = ?',
+            [delta, delta, shop_id],
+            () => {}
+          );
+        }
+
+        logAudit({
+          shop_id,
+          actor_id: req.user.id,
+          actor_role: req.user.role || req.user.type || 'shop_owner',
+          action: 'update',
+          entity_type: 'customer',
+          entity_id: Number(id),
+          details: {
+            name,
+            phone,
+            payment_type,
+            rate_per_bottle,
+            security_deposit_amount: Number(security_deposit_amount || 0),
+            is_active,
+            deposit_bottles_prev: prevDeposit,
+            deposit_bottles_next: nextDeposit,
+          },
+        });
+
+        res.json({ message: 'Customer updated successfully' });
+      }
+    );
+  });
 };
 
 const deleteCustomer = (req, res) => {
