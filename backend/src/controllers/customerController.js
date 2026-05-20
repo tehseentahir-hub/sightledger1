@@ -11,7 +11,17 @@ const getCustomers = (req, res) => {
   const { shop_id } = req.user;
 
   db.all(
-    "SELECT c.*, COALESCE(c.deposit_bottles, 0) as total_bottles_outside FROM customers c WHERE c.shop_id = ? ORDER BY c.created_at DESC",
+    `SELECT c.*,
+            CASE
+              WHEN COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0) > 0
+              THEN COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0)
+              ELSE 0
+            END as total_bottles_outside
+       FROM customers c
+       LEFT JOIN deliveries d ON c.id = d.customer_id AND d.delivery_type != 'walk_in' AND d.shop_id = c.shop_id
+      WHERE c.shop_id = ?
+      GROUP BY c.id, c.shop_id, c.name, c.phone, c.address, c.bottle_type, c.rate_per_bottle, c.payment_type, c.deposit_bottles, c.security_deposit_amount, c.is_active, c.created_at
+      ORDER BY c.created_at DESC`,
     [shop_id],
     (err, customers) => {
       if (err) return res.status(500).json({ message: 'Error fetching customers', error: err.message });
@@ -82,13 +92,6 @@ const createCustomer = (req, res) => {
       function(err) {
         if (err) return res.status(500).json({ message: 'Error creating customer', error: err.message });
 
-        if (deposit_bottles > 0) {
-          db.run(
-            'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers + ?, bottles_in_shop = bottles_in_shop - ? WHERE shop_id = ?',
-            [deposit_bottles, deposit_bottles, shop_id]
-          );
-        }
-
         logAudit({
           shop_id,
           actor_id: req.user.id,
@@ -110,13 +113,12 @@ const updateCustomer = (req, res) => {
   const { shop_id } = req.user;
   const { name, phone, address, bottle_type, rate_per_bottle, payment_type, deposit_bottles, security_deposit_amount, is_active } = req.body;
 
-  db.get('SELECT deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], (fetchErr, existing) => {
+  db.get('SELECT id, deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], (fetchErr, existing) => {
     if (fetchErr) return res.status(500).json({ message: 'Error fetching customer', error: fetchErr.message });
     if (!existing) return res.status(404).json({ message: 'Customer not found' });
 
     const prevDeposit = Number(existing.deposit_bottles || 0);
     const nextDeposit = Number(deposit_bottles || 0);
-    const delta = nextDeposit - prevDeposit;
 
     db.run(
       'UPDATE customers SET name = ?, phone = ?, address = ?, bottle_type = ?, rate_per_bottle = ?, payment_type = ?, deposit_bottles = ?, security_deposit_amount = ?, is_active = ? WHERE id = ? AND shop_id = ?',
@@ -124,17 +126,6 @@ const updateCustomer = (req, res) => {
       function(err) {
         if (err) return res.status(500).json({ message: 'Error updating customer', error: err.message });
         if (this.changes === 0) return res.status(404).json({ message: 'Customer not found' });
-
-        if (delta !== 0) {
-          // Keep bottles_inventory in sync when deposit bottles change.
-          // delta > 0 => move bottles from shop -> customers
-          // delta < 0 => move bottles from customers -> shop
-          db.run(
-            'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers + ?, bottles_in_shop = bottles_in_shop - ? WHERE shop_id = ?',
-            [delta, delta, shop_id],
-            () => {}
-          );
-        }
 
         logAudit({
           shop_id,
@@ -172,13 +163,6 @@ const deleteCustomer = (req, res) => {
   db.get('SELECT deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], (err, customer) => {
     if (err) return res.status(500).json({ message: 'Error fetching customer', error: err.message });
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
-
-    if (customer && customer.deposit_bottles > 0) {
-      db.run(
-        'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers - ?, bottles_in_shop = bottles_in_shop + ? WHERE shop_id = ?',
-        [customer.deposit_bottles, customer.deposit_bottles, shop_id]
-      );
-    }
 
     db.run('DELETE FROM customers WHERE id = ? AND shop_id = ?', [id, shop_id], function(err) {
       if (err) return res.status(500).json({ message: 'Error deleting customer', error: err.message });

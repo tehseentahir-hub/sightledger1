@@ -91,7 +91,7 @@ const createDelivery = (req, res) => {
           return res.status(400).json({ message: 'Customer is required for home delivery' });
         }
 
-        const customer = await getAsync('SELECT id, deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [customer_id, shop_id]);
+        const customer = await getAsync('SELECT id FROM customers WHERE id = ? AND shop_id = ?', [customer_id, shop_id]);
         if (!customer) {
           await runAsync('ROLLBACK');
           return res.status(404).json({ message: 'Customer not found' });
@@ -102,9 +102,6 @@ const createDelivery = (req, res) => {
           'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers + ?, bottles_in_shop = bottles_in_shop - ? WHERE shop_id = ?',
           [netChange, netChange, shop_id]
         );
-
-        const newDeposit = Number(customer.deposit_bottles || 0) + netChange;
-        await runAsync('UPDATE customers SET deposit_bottles = ? WHERE id = ? AND shop_id = ?', [newDeposit, customer_id, shop_id]);
         resolvedDeliveryType = 'home_delivery';
       }
 
@@ -175,12 +172,6 @@ const deleteDelivery = (req, res) => {
             'UPDATE bottles_inventory SET bottles_with_customers = bottles_with_customers - ?, bottles_in_shop = bottles_in_shop + ? WHERE shop_id = ?',
             [netChange, netChange, shop_id]
           );
-
-          const customer = await getAsync('SELECT deposit_bottles FROM customers WHERE id = ? AND shop_id = ?', [delivery.customer_id, shop_id]);
-          if (customer) {
-            const newDeposit = Number(customer.deposit_bottles || 0) - netChange;
-            await runAsync('UPDATE customers SET deposit_bottles = ? WHERE id = ? AND shop_id = ?', [newDeposit, delivery.customer_id, shop_id]);
-          }
         }
 
         await runAsync('DELETE FROM deliveries WHERE id = ? AND shop_id = ?', [id, shop_id]);

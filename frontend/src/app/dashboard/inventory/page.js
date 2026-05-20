@@ -33,7 +33,14 @@ export default function InventoryPage() {
   const loadCustomersWithBottles = async () => {
     try {
       const res = await axios.get(`${API_URL}/inventory/by-customer`)
-      setCustomersWithBottles(res.data)
+      const customers = res.data || []
+      const currentOutside = customers.reduce((sum, customer) => sum + Number(customer.bottles_outside || 0), 0)
+      setCustomersWithBottles(customers)
+      setInventory(prev => prev ? ({
+        ...prev,
+        bottles_with_customers: currentOutside,
+        bottles_in_shop: Math.max(0, Number(prev.total_bottles || 0) - Number(prev.lost_damaged || 0) - currentOutside),
+      }) : prev)
       setShowCustomerModal(true)
     } catch (err) { console.error(err) }
   }

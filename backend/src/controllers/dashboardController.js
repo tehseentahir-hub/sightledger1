@@ -31,6 +31,24 @@ const pAll = (sql, params = []) =>
     });
   });
 
+const WITH_CUSTOMERS_TOTAL_SQL = `SELECT COALESCE(SUM(bottles_outside), 0) as with_customers
+  FROM (
+    SELECT
+      CASE
+        WHEN COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0) > 0
+        THEN COALESCE(SUM(d.bottles_delivered - d.bottles_returned), 0)
+        ELSE 0
+      END as bottles_outside
+    FROM customers c
+    LEFT JOIN deliveries d
+      ON d.customer_id = c.id
+     AND d.shop_id = c.shop_id
+     AND d.delivery_type != 'walk_in'
+    WHERE c.shop_id = ?
+    GROUP BY c.id
+  ) customer_bottles`;
+const BOTTLES_OUTSIDE_TOTAL_SQL = WITH_CUSTOMERS_TOTAL_SQL.replace('as with_customers', 'as outstanding');
+
 const getDashboard = async (req, res) => {
   try {
     const { shop_id } = req.user;
@@ -151,10 +169,7 @@ const getDashboard = async (req, res) => {
             WHERE shop_id = ? AND delivery_date = ? AND (delivery_type = 'walk_in')`,
           [shop_id, today]
         ),
-        pGet(
-          "SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as outstanding FROM customers WHERE shop_id = ? AND is_active = 1",
-          [shop_id]
-        ),
+        pGet(BOTTLES_OUTSIDE_TOTAL_SQL, [shop_id]),
         pGet(
           `SELECT COALESCE(SUM(
                     CASE
@@ -358,10 +373,7 @@ const getReports = async (req, res) => {
 
     if (type === 'bottles') {
       const inventoryRow = await pGet('SELECT * FROM bottles_inventory WHERE shop_id = ?', [shop_id]);
-      const withCustomersRow = await pGet(
-        'SELECT COALESCE(SUM(COALESCE(deposit_bottles, 0)), 0) as with_customers FROM customers WHERE shop_id = ? AND is_active = 1',
-        [shop_id]
-      );
+      const withCustomersRow = await pGet(WITH_CUSTOMERS_TOTAL_SQL, [shop_id]);
       const circulation = await pGet(
         `SELECT
            SUM(bottles_delivered) as total_delivered,
