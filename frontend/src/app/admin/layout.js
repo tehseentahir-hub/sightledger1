@@ -3,8 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Store, CreditCard, LogOut, Menu, X, ClipboardList } from 'lucide-react'
-import BrandLogo from '../../components/BrandLogo'
+import { LayoutDashboard, Store, CreditCard, LogOut, Menu, X, Crown, ClipboardList } from 'lucide-react'
 
 const menuItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -48,8 +47,11 @@ export default function AdminLayout({ children }) {
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-gradient-to-b from-primary to-primary-dark text-white transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform`}>
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-white/20">
-            <BrandLogo href="/admin" variant="admin" priority />
-            <p className="text-sm text-white/70 mt-2">Super Admin Panel</p>
+            <div className="flex items-center gap-2">
+              <Crown className="w-8 h-8" />
+              <span className="font-bold text-xl">Super Admin</span>
+            </div>
+            <p className="text-sm text-white/70 mt-1">Sight Ledger System</p>
           </div>
 
           <nav className="flex-1 p-4 space-y-1">

@@ -3,8 +3,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, ShieldCheck, Store } from 'lucide-react'
-import BrandLogo from '../../components/BrandLogo'
+import { Droplets, Eye, EyeOff, ShieldCheck, Store } from 'lucide-react'
 
 function LoginContent() {
   const [email, setEmail] = useState('')
@@ -44,7 +43,12 @@ function LoginContent() {
         <section className="hidden lg:flex flex-col justify-between bg-slate-950 text-white p-10 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.38),transparent_32%),radial-gradient(circle_at_85%_75%,rgba(20,184,166,0.28),transparent_28%)]" />
           <div className="relative">
-            <BrandLogo href="/" variant="header" priority />
+            <Link href="/" className="inline-flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-cyan-400 flex items-center justify-center">
+                <Droplets className="w-6 h-6 text-slate-950" />
+              </span>
+              <span className="text-2xl font-bold">Sight Ledger</span>
+            </Link>
             <h1 className="mt-16 text-4xl font-bold leading-tight">
               One login for daily bottle delivery, payments, invoices, and reports.
             </h1>
@@ -70,7 +74,12 @@ function LoginContent() {
 
         <section className="p-6 sm:p-10">
           <div className="mb-8 lg:hidden">
-            <BrandLogo href="/" variant="mobile" priority />
+            <Link href="/" className="inline-flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-sky-500 flex items-center justify-center">
+                <Droplets className="w-6 h-6 text-white" />
+              </span>
+              <span className="text-2xl font-bold text-slate-900">Sight Ledger</span>
+            </Link>
           </div>
 
           <div className="mb-8">
