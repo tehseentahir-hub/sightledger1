@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ArrowRight, Check, Droplets, MessageCircle } from 'lucide-react'
+import { ArrowRight, Check, MessageCircle } from 'lucide-react'
+import BrandLogo from '../../components/BrandLogo'
 
 const plans = [
   {
@@ -79,20 +80,15 @@ export const metadata = {
   },
 }
 
+const whatsappHref = 'https://wa.me/923714885437'
+const whatsappLabel = 'WhatsApp +92371-4885437'
+
 export default function PricingPage() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7fcff,#ffffff)] text-slate-900">
       <header className="border-b border-sky-100 bg-white/92 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500 text-white">
-              <Droplets size={24} />
-            </span>
-            <div>
-              <p className="text-xl font-bold leading-none">Sight Ledger</p>
-              <p className="text-xs font-medium text-slate-500">Sightledger.com</p>
-            </div>
-          </Link>
+          <BrandLogo href="/" variant="header" priority />
           <div className="flex items-center gap-2">
             <Link href="/" className="hidden rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex">
               Home
@@ -146,7 +142,7 @@ export default function PricingPage() {
               </ul>
 
               <Link
-                href={plan.contact ? 'https://wa.me/923043265747' : '/login?role=shop_owner'}
+                href={plan.contact ? whatsappHref : '/login?role=shop_owner'}
                 className={`mt-8 inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold ${plan.highlighted ? 'bg-sky-700 text-white' : 'bg-sky-600 text-white'}`}
               >
                 {plan.cta} {plan.contact ? <MessageCircle size={16} /> : <ArrowRight size={16} />}
@@ -165,8 +161,8 @@ export default function PricingPage() {
               <a href="mailto:Hello@Sightledger.com" className="rounded-full border border-slate-200 px-5 py-3 text-center font-semibold text-slate-800">
                 Hello@Sightledger.com
               </a>
-              <a href="https://wa.me/923043265747" className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 font-semibold text-white">
-                <MessageCircle size={18} /> WhatsApp +923043265747
+              <a href={whatsappHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 font-semibold text-white">
+                <MessageCircle size={18} /> {whatsappLabel}
               </a>
             </div>
           </div>

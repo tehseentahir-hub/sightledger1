@@ -34,6 +34,11 @@ export const metadata = {
     title: 'SightLedger | Water Delivery Management Software',
     description: 'Manage water bottle deliveries, customers, inventory, billing and operations with SightLedger.',
   },
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 }
 
 export default function RootLayout({ children }) {

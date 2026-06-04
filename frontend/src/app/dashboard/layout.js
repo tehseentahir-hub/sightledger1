@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Users, Truck, Package, DollarSign,
-  TrendingUp, LogOut, Menu, X, Droplets, FileText, SlidersHorizontal
+  TrendingUp, LogOut, Menu, X, FileText, SlidersHorizontal
 } from 'lucide-react'
+import BrandLogo from '../../components/BrandLogo'
 
 const menuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -63,12 +64,7 @@ export default function DashboardLayout({ children }) {
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform`}>
         <div className="h-full flex flex-col">
           <div className="p-6 border-b">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Droplets className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-lg">Sight Ledger</span>
-            </div>
+            <BrandLogo href="/dashboard" variant="sidebar" priority />
             <p className="text-xs text-gray-500 mt-1 truncate">{user?.shop_name}</p>
           </div>
 

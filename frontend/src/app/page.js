@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ArrowRight, BarChart3, CheckCircle2, CreditCard, Droplets, FileText, MessageCircle, ShieldCheck, Smartphone, Star, Truck, Users } from 'lucide-react'
+import { ArrowRight, BarChart3, CheckCircle2, CreditCard, FileText, MessageCircle, ShieldCheck, Smartphone, Star, Truck, Users } from 'lucide-react'
+import BrandLogo from '../components/BrandLogo'
 
 export const metadata = {
   title: 'SightLedger | Water Delivery Management Software',
@@ -59,6 +60,9 @@ const metrics = [
   ['PDF', 'monthly invoices'],
 ]
 
+const whatsappHref = 'https://wa.me/923714885437'
+const whatsappLabel = 'WhatsApp +92371-4885437'
+
 export default function HomePage() {
   const softwareApplicationSchema = {
     '@context': 'https://schema.org',
@@ -85,15 +89,7 @@ export default function HomePage() {
       />
       <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white shadow-md shadow-sky-100">
-              <Droplets size={22} />
-            </span>
-            <div>
-              <p className="text-lg font-semibold leading-none tracking-tight">Sight Ledger</p>
-              <p className="text-xs text-slate-500">Sightledger.com</p>
-            </div>
-          </Link>
+          <BrandLogo href="/" variant="header" priority />
           <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
             <a href="#features" className="hover:text-sky-700">Features</a>
             <a href="#reviews" className="hover:text-sky-700">Reviews</a>
@@ -291,8 +287,8 @@ export default function HomePage() {
               <a href="mailto:Hello@Sightledger.com" className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-sm">
                 Hello@Sightledger.com
               </a>
-              <a href="https://wa.me/923043265747" className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white">
-                <MessageCircle size={18} /> WhatsApp +923043265747
+              <a href={whatsappHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white">
+                <MessageCircle size={18} /> {whatsappLabel}
               </a>
             </div>
           </div>

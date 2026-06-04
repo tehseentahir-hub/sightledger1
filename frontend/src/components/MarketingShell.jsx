@@ -1,19 +1,15 @@
 import Link from 'next/link'
-import { ArrowRight, Droplets, Mail, MessageCircle } from 'lucide-react'
+import { ArrowRight, Mail, MessageCircle } from 'lucide-react'
+import BrandLogo from './BrandLogo'
+
+const whatsappHref = 'https://wa.me/923714885437'
+const whatsappLabel = 'WhatsApp +92371-4885437'
 
 export function MarketingHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-sky-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white shadow-md shadow-sky-100">
-            <Droplets size={22} />
-          </span>
-          <div>
-            <p className="text-lg font-semibold leading-none tracking-tight">Sight Ledger</p>
-            <p className="text-xs text-slate-500">Sightledger.com</p>
-          </div>
-        </Link>
+        <BrandLogo href="/" variant="header" priority />
 
         <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex">
           <Link href="/#features" className="hover:text-sky-700">Features</Link>
@@ -40,12 +36,7 @@ export function MarketingFooter() {
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.2fr_0.8fr_0.8fr] lg:px-8">
         <div>
-          <Link href="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 text-white">
-              <Droplets size={22} />
-            </span>
-            <span className="text-lg font-semibold text-slate-950">Sight Ledger</span>
-          </Link>
+          <BrandLogo href="/" variant="footer" />
           <p className="mt-4 max-w-md leading-7 text-slate-600">
             Web based management software for water filtration plants and 19 liter bottle delivery businesses.
           </p>
@@ -67,8 +58,8 @@ export function MarketingFooter() {
             <a href="mailto:Hello@Sightledger.com" className="inline-flex items-center gap-2 hover:text-sky-700">
               <Mail size={16} /> Hello@Sightledger.com
             </a>
-            <a href="https://wa.me/923043265747" className="inline-flex items-center gap-2 hover:text-sky-700">
-              <MessageCircle size={16} /> WhatsApp +923043265747
+            <a href={whatsappHref} className="inline-flex items-center gap-2 hover:text-sky-700">
+              <MessageCircle size={16} /> {whatsappLabel}
             </a>
           </div>
         </div>
