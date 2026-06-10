@@ -9,7 +9,7 @@ const getAllShops = (req, res) => {
   db.all(`
     SELECT s.id, s.shop_name, s.owner_name, s.phone, s.address, s.email,
            s.subscription_type, s.subscription_start, s.subscription_expiry,
-           s.customer_limit, s.custom_price, s.custom_limit, s.default_refill_rate,
+           s.customer_limit, s.custom_price, s.custom_limit, s.business_mode, s.default_refill_rate,
            s.is_active, s.created_at, s.updated_at, COUNT(c.id) as customer_count
     FROM shops s
     LEFT JOIN customers c ON s.id = c.shop_id
@@ -23,7 +23,7 @@ const getAllShops = (req, res) => {
 };
 
 const createShop = (req, res) => {
-  const { shop_name, owner_name, phone, address, email, password, subscription_type, duration_days } = req.body;
+  const { shop_name, owner_name, phone, address, email, password, subscription_type, duration_days, business_mode } = req.body;
 
   console.log('Creating shop:', { shop_name, subscription_type, email });
 
@@ -60,8 +60,8 @@ const createShop = (req, res) => {
         const expiry = expiryDate.toISOString().split('T')[0];
 
         db.run(
-          'INSERT INTO shops (shop_name, owner_name, phone, address, email, password, subscription_type, subscription_start, subscription_expiry, customer_limit, default_refill_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [shop_name, owner_name, phone, address, email, hashedPassword, subscription_type, startDate, expiry, customerLimit, 100, 1],
+          'INSERT INTO shops (shop_name, owner_name, phone, address, email, password, subscription_type, subscription_start, subscription_expiry, customer_limit, business_mode, default_refill_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [shop_name, owner_name, phone, address, email, hashedPassword, subscription_type, startDate, expiry, customerLimit, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', 100, 1],
           function(err) {
             if (err) {
               console.log('Insert error:', err);
@@ -76,7 +76,7 @@ const createShop = (req, res) => {
               action: 'create',
               entity_type: 'shop',
               entity_id: this.lastID,
-              details: { shop_name, subscription_type, customerLimit, duration_days: planDurationDays },
+              details: { shop_name, subscription_type, customerLimit, duration_days: planDurationDays, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l' },
             });
             res.status(201).json({ message: 'Shop created successfully', shop_id: this.lastID, duration_days: planDurationDays });
           }
@@ -91,13 +91,13 @@ const createShop = (req, res) => {
 
 const updateShop = (req, res) => {
   const { id } = req.params;
-  const { shop_name, owner_name, phone, address, subscription_type, is_active, password } = req.body;
+  const { shop_name, owner_name, phone, address, subscription_type, is_active, password, business_mode } = req.body;
 
   if (password) {
     const hashedPassword = bcrypt.hashSync(password, 10);
     db.run(
-      'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, is_active = ?, password = ? WHERE id = ?',
-      [shop_name, owner_name, phone, address, subscription_type, is_active ? 1 : 0, hashedPassword, id],
+      'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, business_mode = ?, is_active = ?, password = ? WHERE id = ?',
+      [shop_name, owner_name, phone, address, subscription_type, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active ? 1 : 0, hashedPassword, id],
       function(err) {
         if (err) return res.status(500).json({ message: 'Error updating shop', error: err.message });
         logAudit({
@@ -107,15 +107,15 @@ const updateShop = (req, res) => {
           action: 'update',
           entity_type: 'shop',
           entity_id: Number(id),
-          details: { shop_name, subscription_type, is_active: is_active ? 1 : 0, password_changed: true },
+          details: { shop_name, subscription_type, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active: is_active ? 1 : 0, password_changed: true },
         });
         res.json({ message: 'Shop updated successfully' });
       }
     );
   } else {
     db.run(
-      'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, is_active = ? WHERE id = ?',
-      [shop_name, owner_name, phone, address, subscription_type, is_active ? 1 : 0, id],
+      'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, business_mode = ?, is_active = ? WHERE id = ?',
+      [shop_name, owner_name, phone, address, subscription_type, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active ? 1 : 0, id],
       function(err) {
         if (err) return res.status(500).json({ message: 'Error updating shop', error: err.message });
         logAudit({
@@ -125,7 +125,7 @@ const updateShop = (req, res) => {
           action: 'update',
           entity_type: 'shop',
           entity_id: Number(id),
-          details: { shop_name, subscription_type, is_active: is_active ? 1 : 0, password_changed: false },
+          details: { shop_name, subscription_type, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active: is_active ? 1 : 0, password_changed: false },
         });
         res.json({ message: 'Shop updated successfully' });
       }

@@ -2,13 +2,14 @@
 import { useAuth } from '../../context/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   LayoutDashboard, Users, Truck, Package, DollarSign,
-  TrendingUp, LogOut, Menu, X, Droplets, FileText, SlidersHorizontal
+  TrendingUp, LogOut, Menu, X, Droplets, FileText, SlidersHorizontal, ArrowDownUp
 } from 'lucide-react'
+import { isPetTradingMode } from '../../lib/businessMode'
 
-const menuItems = [
+const standardMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/customers', icon: Users, label: 'Customers' },
   { href: '/dashboard/deliveries', icon: Truck, label: 'Deliveries' },
@@ -20,11 +21,33 @@ const menuItems = [
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
 ]
 
+const petOwnerMenuItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard/items', icon: Package, label: 'Inventory Items' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Stock & Sales' },
+  { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
+  { href: '/dashboard/expenses', icon: DollarSign, label: 'Expenses' },
+  { href: '/dashboard/settings', icon: SlidersHorizontal, label: 'Settings' },
+]
+
+const petCashierMenuItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard/items', icon: Package, label: 'Inventory Items' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Stock & Sales' },
+  { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
+]
+
 export default function DashboardLayout({ children }) {
   const { user, logout, loading, mounted } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const petMode = isPetTradingMode(user)
+  const visibleMenuItems = useMemo(() => (
+    petMode
+      ? (user?.type === 'staff' ? petCashierMenuItems : petOwnerMenuItems)
+      : standardMenuItems.filter((item) => !item.ownerOnly || user?.type !== 'staff')
+  ), [petMode, user?.type])
 
   useEffect(() => {
     if (!mounted) return
@@ -37,12 +60,27 @@ export default function DashboardLayout({ children }) {
     }
   }, [mounted, user, router])
 
+  useEffect(() => {
+    if (!mounted || !user || user.role === 'super_admin') return
+
+    const allowedPaths = visibleMenuItems.map((item) => item.href)
+    const isAllowed = allowedPaths.some((href) => pathname === href || pathname.startsWith(`${href}/`))
+
+    if (!petMode && (pathname.startsWith('/dashboard/items') || pathname.startsWith('/dashboard/stock'))) {
+      router.replace('/dashboard')
+      return
+    }
+
+    if (petMode && !isAllowed) {
+      router.replace('/dashboard')
+    }
+  }, [mounted, user, pathname, petMode, router, visibleMenuItems])
+
   if (!mounted || loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
   }
 
   if (!user || user.role === 'super_admin') return null
-  const visibleMenuItems = menuItems.filter((item) => !item.ownerOnly || user?.type !== 'staff')
 
   const handleLogout = () => {
     logout()

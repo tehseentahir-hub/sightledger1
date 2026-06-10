@@ -1,0 +1,28 @@
+const express = require('express');
+const router = express.Router();
+const { authMiddleware } = require('../middleware/auth');
+const {
+  getItems,
+  createItem,
+  updateItem,
+  deleteItem,
+  getTransactions,
+  createTransaction,
+  getSummary,
+  getReports,
+} = require('../controllers/petController');
+
+router.use(authMiddleware);
+
+router.get('/summary', getSummary);
+router.get('/reports', getReports);
+
+router.get('/items', getItems);
+router.post('/items', createItem);
+router.put('/items/:id', updateItem);
+router.delete('/items/:id', deleteItem);
+
+router.get('/transactions', getTransactions);
+router.post('/transactions', createTransaction);
+
+module.exports = router;

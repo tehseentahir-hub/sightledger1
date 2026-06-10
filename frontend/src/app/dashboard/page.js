@@ -5,6 +5,8 @@ import { Users, Truck, DollarSign, Package, Calendar, Droplets, Wallet } from 'l
 import { useAuth } from '../../context/AuthContext'
 
 import { API_URL } from '../../lib/api'
+import { isPetTradingMode } from '../../lib/businessMode'
+import PetDashboardView from '../../components/pet/PetDashboardView'
 
 function MiniChart({ data = [], valueKey = 'bottles', color = '#16a34a' }) {
   if (!data.length) return null
@@ -33,15 +35,24 @@ export default function Dashboard() {
   const [shopInfo, setShopInfo] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const { user } = useAuth()
+  const activeShop = shopInfo || user || null
+  const petMode = isPetTradingMode(activeShop)
 
   useEffect(() => {
-    loadDashboard()
     loadShopInfo()
     try {
       const hidden = localStorage.getItem('sightledger_onboarding_hidden') === '1'
       setShowOnboarding(!hidden)
     } catch {}
   }, [])
+
+  useEffect(() => {
+    if (petMode) {
+      setLoading(false)
+      return
+    }
+    loadDashboard()
+  }, [petMode])
 
   const loadDashboard = async () => {
     try {
@@ -57,8 +68,6 @@ export default function Dashboard() {
       setShopInfo(res.data)
     } catch (err) { console.error(err) }
   }
-
-  const activeShop = shopInfo || user || null
 
   const normalizePlanName = (rawType) => {
     const plan = String(rawType || '').trim().toLowerCase()
@@ -84,6 +93,10 @@ export default function Dashboard() {
   const isExpired = Boolean(expiryDate && rawDaysLeft < 0)
   const packageName = normalizePlanName(activeShop?.subscription_type)
   const expiryLabel = expiryDate ? new Date(activeShop.subscription_expiry).toLocaleDateString('en-GB') : 'N/A'
+
+  if (petMode) {
+    return <PetDashboardView user={activeShop} />
+  }
 
   if (loading) {
     return (

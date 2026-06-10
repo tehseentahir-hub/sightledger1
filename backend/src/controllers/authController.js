@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { JWT_SECRET } = require('../middleware/auth');
+const { normalizeBusinessMode } = require('../utils/businessMode');
 
 const isSuperAdminShop = (shop) => (
   shop?.subscription_type === 'super_admin'
@@ -54,7 +55,7 @@ const login = async (req, res) => {
   const identifier = String(email || '').trim();
 
   const loginStaff = () => {
-    db.get('SELECT st.*, sh.shop_name, sh.subscription_type, sh.subscription_expiry, sh.customer_limit, sh.default_refill_rate, sh.is_active as shop_is_active FROM staff st JOIN shops sh ON st.shop_id = sh.id WHERE st.phone = ?', [identifier], async (staffErr, staff) => {
+    db.get('SELECT st.*, sh.shop_name, sh.subscription_type, sh.subscription_expiry, sh.customer_limit, sh.default_refill_rate, sh.business_mode, sh.is_active as shop_is_active FROM staff st JOIN shops sh ON st.shop_id = sh.id WHERE st.phone = ?', [identifier], async (staffErr, staff) => {
       if (staffErr) {
         return res.status(500).json({ message: 'Login error', error: staffErr.message });
       }
@@ -96,6 +97,7 @@ const login = async (req, res) => {
           role: staff.role,
           type: 'staff',
           shop_id: staff.shop_id,
+          business_mode: normalizeBusinessMode(staff.business_mode),
           subscription_type: staff.subscription_type,
           subscription_expiry: staff.subscription_expiry,
           customer_limit: staff.customer_limit,
@@ -154,6 +156,7 @@ const login = async (req, res) => {
           email: shop.email,
           shop_name: shop.shop_name,
           role,
+          business_mode: normalizeBusinessMode(shop.business_mode),
           subscription_type: shop.subscription_type,
           subscription_expiry: shop.subscription_expiry,
           customer_limit: customerLimit,
@@ -173,7 +176,7 @@ const getMe = (req, res) => {
   db.get(`
     SELECT s.id, s.shop_name, s.owner_name, s.phone, s.address, s.email,
            s.subscription_type, s.subscription_start, s.subscription_expiry,
-           s.customer_limit, s.custom_price, s.custom_limit, s.default_refill_rate,
+           s.customer_limit, s.custom_price, s.custom_limit, s.business_mode, s.default_refill_rate,
            s.is_active, s.created_at, s.updated_at, COUNT(c.id) as customer_count
     FROM shops s
     LEFT JOIN customers c ON s.id = c.shop_id

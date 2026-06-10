@@ -19,8 +19,11 @@ import {
   Users,
   WalletCards,
 } from 'lucide-react'
+import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL } from '../../../lib/api'
+import { isPetTradingMode } from '../../../lib/businessMode'
+import PetReportsView from '../../../components/pet/PetReportsView'
 
 const currency = (value) => `Rs ${Number(value || 0).toLocaleString()}`
 const number = (value) => Number(value || 0).toLocaleString()
@@ -121,6 +124,7 @@ function SplitBars({ data = [] }) {
 }
 
 export default function ReportsPage() {
+  const { user } = useAuth()
   const [activeReport, setActiveReport] = useState('monthly')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -142,10 +146,12 @@ export default function ReportsPage() {
     { value: 'daily', label: 'Daily', desc: 'Date-wise delivery detail', icon: Calendar },
     { value: 'bottles', label: 'Bottles', desc: 'Inventory circulation', icon: Package },
   ]
+  const petMode = isPetTradingMode(user)
 
   useEffect(() => {
+    if (petMode) return
     loadReport()
-  }, [activeReport, filter.month, filter.year, filter.start_date, filter.end_date])
+  }, [activeReport, filter.month, filter.year, filter.start_date, filter.end_date, petMode])
 
   const monthRange = () => ({
     start_date: `${filter.year}-${String(filter.month).padStart(2, '0')}-01`,
@@ -209,6 +215,10 @@ export default function ReportsPage() {
     }
 
     doc.save(`sight_ledger_${activeReport}_${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
+  if (petMode) {
+    return <PetReportsView user={user} />
   }
 
   const active = reports.find((item) => item.value === activeReport)

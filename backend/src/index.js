@@ -30,6 +30,7 @@ const inventoryRoutes = require('./routes/inventory');
 const expenseRoutes = require('./routes/expenses');
 const dashboardRoutes = require('./routes/dashboard');
 const staffRoutes = require('./routes/staff');
+const petRoutes = require('./routes/pet');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -40,6 +41,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/pet', petRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

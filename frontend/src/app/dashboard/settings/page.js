@@ -8,6 +8,7 @@ import { useAuth } from '../../../context/AuthContext'
 import CenterDialog from '../../../components/CenterDialog'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
+import { isPetTradingMode } from '../../../lib/businessMode'
 
 const emptyRider = { name: '', is_active: true }
 const emptyCashier = { name: '', phone: '', password: '', is_active: true }
@@ -16,6 +17,7 @@ const numberOrZero = (value) => value === '' ? 0 : Number(value || 0)
 
 export default function SettingsPage() {
   const { user, setUser } = useAuth()
+  const petMode = isPetTradingMode(user)
   const [loading, setLoading] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
@@ -226,7 +228,7 @@ export default function SettingsPage() {
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-4">
             <Store size={20} className="text-primary" />
-            <h2 className="text-lg font-semibold">Shop Profile & Delivery Defaults</h2>
+            <h2 className="text-lg font-semibold">{petMode ? 'Shop Profile' : 'Shop Profile & Delivery Defaults'}</h2>
           </div>
           <form onSubmit={handleProfileSave} className="space-y-4">
             <div>
@@ -247,11 +249,13 @@ export default function SettingsPage() {
               <label className="block text-sm font-medium mb-1">Address</label>
               <textarea value={profile.address} onChange={e => setProfile({ ...profile, address: e.target.value })} className="input" rows={3} />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Default Refill Rate per Bottle</label>
-              <input type="number" min="1" value={profile.default_refill_rate} onChange={e => setProfile({ ...profile, default_refill_rate: numberOrEmpty(e.target.value) })} className="input" required />
-              <p className="text-xs text-gray-500 mt-1">This default rate is auto-filled for walk-in refills.</p>
-            </div>
+            {!petMode && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Default Refill Rate per Bottle</label>
+                <input type="number" min="1" value={profile.default_refill_rate} onChange={e => setProfile({ ...profile, default_refill_rate: numberOrEmpty(e.target.value) })} className="input" required />
+                <p className="text-xs text-gray-500 mt-1">This default rate is auto-filled for walk-in refills.</p>
+              </div>
+            )}
             <button type="submit" disabled={savingProfile} className="btn btn-primary inline-flex items-center gap-2">
               <Save size={18} /> {savingProfile ? 'Saving...' : 'Save Settings'}
             </button>

@@ -26,6 +26,7 @@ function initializeDatabase() {
       customer_limit INTEGER DEFAULT 100,
       custom_price REAL DEFAULT 0,
       custom_limit INTEGER DEFAULT 0,
+      business_mode TEXT DEFAULT 'water_19l',
       default_refill_rate REAL DEFAULT 100,
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -34,6 +35,7 @@ function initializeDatabase() {
 
     db.run(`ALTER TABLE shops ADD COLUMN custom_price REAL DEFAULT 0`, (err) => {});
     db.run(`ALTER TABLE shops ADD COLUMN custom_limit INTEGER DEFAULT 0`, (err) => {});
+    db.run(`ALTER TABLE shops ADD COLUMN business_mode TEXT DEFAULT 'water_19l'`, (err) => {});
     db.run(`ALTER TABLE shops ADD COLUMN default_refill_rate REAL DEFAULT 100`, (err) => {});
 
     // Plans Table - Updated with customer limits
@@ -148,6 +150,38 @@ function initializeDatabase() {
       FOREIGN KEY(shop_id) REFERENCES shops(id)
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS inventory_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL,
+      item_name TEXT NOT NULL,
+      category TEXT DEFAULT 'PET Bottle',
+      size_label TEXT NOT NULL,
+      unit_type TEXT DEFAULT 'pieces',
+      cost_price REAL DEFAULT 0,
+      sale_price REAL DEFAULT 0,
+      opening_stock INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      created_by INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(shop_id) REFERENCES shops(id)
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL,
+      item_id INTEGER NOT NULL,
+      txn_type TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_price REAL DEFAULT 0,
+      notes TEXT,
+      txn_date TEXT NOT NULL,
+      created_by INTEGER,
+      created_by_role TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(shop_id) REFERENCES shops(id),
+      FOREIGN KEY(item_id) REFERENCES inventory_items(id)
+    )`);
+
     // Insert current Sight Ledger plans.
     db.run(`DELETE FROM plans`);
     db.run(`INSERT INTO plans (plan_name, duration_days, price, customer_limit, is_active) VALUES
@@ -164,8 +198,8 @@ function initializeDatabase() {
     const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD;
 
     const createSuperAdmin = (email, passwordHash) => {
-      db.run(`INSERT OR IGNORE INTO shops (shop_name, owner_name, phone, address, email, password, subscription_type, subscription_start, subscription_expiry, customer_limit, default_refill_rate, is_active)
-        VALUES ('Sight Ledger System', 'Super Admin', '0000000000', 'System Admin', ?, ?, 'super_admin', '2024-01-01', '2030-12-31', 999999, 100, 1)`,
+      db.run(`INSERT OR IGNORE INTO shops (shop_name, owner_name, phone, address, email, password, subscription_type, subscription_start, subscription_expiry, customer_limit, business_mode, default_refill_rate, is_active)
+        VALUES ('Sight Ledger System', 'Super Admin', '0000000000', 'System Admin', ?, ?, 'super_admin', '2024-01-01', '2030-12-31', 999999, 'water_19l', 100, 1)`,
         [email, passwordHash]);
     };
 
@@ -173,7 +207,7 @@ function initializeDatabase() {
       const hashedPassword = bcrypt.hashSync(SUPERADMIN_PASSWORD, 10);
       createSuperAdmin(SUPERADMIN_EMAIL, hashedPassword);
       db.run(`UPDATE shops
-              SET password = ?, shop_name = 'Sight Ledger System', owner_name = 'Super Admin', is_active = 1
+              SET password = ?, shop_name = 'Sight Ledger System', owner_name = 'Super Admin', business_mode = 'water_19l', is_active = 1
               WHERE email = ? AND subscription_type = 'super_admin'`,
         [hashedPassword, SUPERADMIN_EMAIL]);
     } else {

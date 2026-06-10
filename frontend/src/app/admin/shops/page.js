@@ -4,6 +4,19 @@ import axios from 'axios'
 import { Plus, X, Edit, Trash2, ToggleLeft, ToggleRight, Lock } from 'lucide-react'
 
 import { API_URL } from '../../../lib/api'
+import { BUSINESS_MODES, getBusinessModeLabel } from '../../../lib/businessMode'
+
+const emptyForm = {
+  shop_name: '',
+  owner_name: '',
+  phone: '',
+  address: '',
+  email: '',
+  password: '',
+  subscription_type: 'Free Trial',
+  duration_days: 7,
+  business_mode: BUSINESS_MODES.WATER_19L,
+}
 
 export default function ShopsPage() {
   const [shops, setShops] = useState([])
@@ -12,16 +25,7 @@ export default function ShopsPage() {
   const [showModal, setShowModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [selectedShop, setSelectedShop] = useState(null)
-  const [form, setForm] = useState({
-    shop_name: '',
-    owner_name: '',
-    phone: '',
-    address: '',
-    email: '',
-    password: '',
-    subscription_type: 'Free Trial',
-    duration_days: 7
-  })
+  const [form, setForm] = useState(emptyForm)
   const [passwordForm, setPasswordForm] = useState({ new_password: '' })
   const [editId, setEditId] = useState(null)
 
@@ -54,14 +58,19 @@ export default function ShopsPage() {
         await axios.post(`${API_URL}/admin/shops`, form)
       }
       setShowModal(false)
-      setForm({ shop_name: '', owner_name: '', phone: '', address: '', email: '', password: '', subscription_type: 'Free Trial', duration_days: 7 })
+      setForm(emptyForm)
       setEditId(null)
       loadShops()
     } catch (err) { alert('Error: ' + (err.response?.data?.message || 'Error saving shop')) }
   }
 
   const handleEdit = (shop) => {
-    setForm(shop)
+    setForm({
+      ...emptyForm,
+      ...shop,
+      business_mode: shop.business_mode || BUSINESS_MODES.WATER_19L,
+      password: '',
+    })
     setEditId(shop.id)
     setShowModal(true)
   }
@@ -111,7 +120,7 @@ export default function ShopsPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Shops Management</h1>
-        <button onClick={() => { setForm({ shop_name: '', owner_name: '', phone: '', address: '', email: '', password: '', subscription_type: 'Free Trial', duration_days: 7 }); setEditId(null); setShowModal(true) }} className="btn btn-primary">
+        <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true) }} className="btn btn-primary">
           <Plus size={20} /> Add Shop
         </button>
       </div>
@@ -146,6 +155,7 @@ export default function ShopsPage() {
                 <th>Phone</th>
                 <th>Customers</th>
                 <th>Package</th>
+                <th>Mode</th>
                 <th>Expiry</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -153,9 +163,9 @@ export default function ShopsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8">Loading...</td></tr>
+                <tr><td colSpan={9} className="text-center py-8">Loading...</td></tr>
               ) : shops.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">No shops found</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-gray-400">No shops found</td></tr>
               ) : (
                 shops.map(s => {
                   const plan = getPlanDetails(s)
@@ -171,6 +181,11 @@ export default function ShopsPage() {
                       </td>
                       <td>
                         <span className="badge badge-info">{s.subscription_type?.replace('_', ' ')}</span>
+                      </td>
+                      <td>
+                        <span className={`badge ${s.business_mode === BUSINESS_MODES.PET_TRADING ? 'badge-warning' : 'badge-info'}`}>
+                          {getBusinessModeLabel(s.business_mode)}
+                        </span>
                       </td>
                       <td className={isExpired(s.subscription_expiry) ? 'text-red-600 font-medium' : ''}>
                         {s.subscription_expiry}
@@ -251,6 +266,20 @@ export default function ShopsPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Business Mode</label>
+                <select
+                  value={form.business_mode}
+                  onChange={e => setForm({ ...form, business_mode: e.target.value })}
+                  className="input"
+                >
+                  <option value={BUSINESS_MODES.WATER_19L}>Standard Water Delivery</option>
+                  <option value={BUSINESS_MODES.PET_TRADING}>PET / Multi-Size Inventory</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Standard mode keeps the current 19L workflow. PET mode enables multi-size inventory and daily stock/sales records.
+                </p>
               </div>
 
               <button type="submit" className="btn btn-primary w-full py-3">
