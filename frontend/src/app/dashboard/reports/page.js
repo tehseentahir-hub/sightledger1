@@ -61,63 +61,77 @@ function EmptyState({ title = 'No data found', message = 'Try changing the selec
   )
 }
 
-function BarChart({ data = [], valueKey, labelKey = 'day', color = '#16a34a', formatValue = number }) {
-  if (!data.length) return <EmptyState message="No chart data found for the selected period." />
+function DonutChart({ title, totalLabel, segments = [] }) {
+  const visibleSegments = segments.filter((segment) => Number(segment.value || 0) > 0)
+  const total = visibleSegments.reduce((sum, segment) => sum + Number(segment.value || 0), 0)
 
-  const values = data.map((item) => Number(item[valueKey] || 0))
-  const max = Math.max(1, ...values)
-  const width = Math.max(360, data.length * 58)
+  if (!total) return <EmptyState message="No chart data found for the selected period." />
+
+  let cursor = 0
+  const gradient = visibleSegments.map((segment) => {
+    const start = cursor
+    const end = cursor + (Number(segment.value || 0) / total) * 100
+    cursor = end
+    return `${segment.color} ${start}% ${end}%`
+  }).join(', ')
 
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} 190`} className="h-52 w-full min-w-[360px]">
-        {data.map((item, index) => {
-          const value = Number(item[valueKey] || 0)
-          const height = Math.max(6, (value / max) * 120)
-          const x = index * 58 + 18
-          const y = 145 - height
-          const label = String(item[labelKey] || item.date || '').slice(-2)
-          return (
-            <g key={`${label}-${index}`}>
-              <rect x={x} y={y} width="28" height={height} rx="6" fill={color} />
-              <text x={x + 14} y={y - 6} fontSize="10" textAnchor="middle" fill="#0f172a">{formatValue(value)}</text>
-              <text x={x + 14} y="168" fontSize="10" textAnchor="middle" fill="#64748b">{label || '-'}</text>
-            </g>
-          )
-        })}
-      </svg>
+    <div className="rounded-xl border border-gray-100 bg-white p-5">
+      <div className="mb-4">
+        <h2 className="font-semibold text-gray-900">{title}</h2>
+        <p className="text-sm text-gray-500">{totalLabel}</p>
+      </div>
+      <div className="grid grid-cols-1 items-center gap-5 sm:grid-cols-[160px_1fr]">
+        <div
+          className="relative mx-auto h-40 w-40 rounded-full"
+          style={{ background: `conic-gradient(${gradient})` }}
+          aria-label={title}
+        >
+          <div className="absolute inset-6 flex flex-col items-center justify-center rounded-full bg-white text-center shadow-inner">
+            <span className="text-xs text-gray-500">Total</span>
+            <span className="text-lg font-bold text-gray-900">{total.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {visibleSegments.map((segment) => {
+            const percentage = Math.round((Number(segment.value || 0) / total) * 100)
+            return (
+              <div key={segment.label} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+                <span className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: segment.color }} />
+                  {segment.label}
+                </span>
+                <span className="text-sm font-semibold text-gray-900">{segment.format ? segment.format(segment.value) : number(segment.value)} ({percentage}%)</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
 
-function SplitBars({ data = [] }) {
-  if (!data.length) return <EmptyState message="No home and walk-in comparison data found." />
+function DailyHighlights({ rows = [], valueKey = 'total_sales', formatValue = currency }) {
+  const topRows = [...rows]
+    .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0))
+    .slice(0, 5)
 
-  const max = Math.max(1, ...data.map((item) => Number(item.home_bottles || 0) + Number(item.walkin_bottles || 0)))
-  const width = Math.max(360, data.length * 64)
+  if (!topRows.length) return <EmptyState message="No daily highlights found for the selected period." />
 
   return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} 190`} className="h-52 w-full min-w-[360px]">
-        {data.map((item, index) => {
-          const home = Number(item.home_bottles || 0)
-          const walkin = Number(item.walkin_bottles || 0)
-          const homeHeight = Math.max(5, (home / max) * 120)
-          const walkinHeight = Math.max(5, (walkin / max) * 120)
-          const x = index * 64 + 16
-          const label = String(item.day || '').slice(-2)
-          return (
-            <g key={`${item.day}-${index}`}>
-              <rect x={x} y={145 - homeHeight} width="20" height={homeHeight} rx="5" fill="#2563eb" />
-              <rect x={x + 24} y={145 - walkinHeight} width="20" height={walkinHeight} rx="5" fill="#16a34a" />
-              <text x={x + 22} y="168" fontSize="10" textAnchor="middle" fill="#64748b">{label || '-'}</text>
-            </g>
-          )
-        })}
-      </svg>
-      <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-600" /> Home bottles</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-600" /> Walk-in bottles</span>
+    <div className="rounded-xl border border-gray-100 bg-white p-5">
+      <h2 className="mb-1 font-semibold text-gray-900">Top Days</h2>
+      <p className="mb-4 text-sm text-gray-500">Highest activity days in the selected month.</p>
+      <div className="space-y-3">
+        {topRows.map((row, index) => (
+          <div key={`${row.day}-${index}`} className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3">
+            <div>
+              <p className="font-medium text-gray-900">{row.day}</p>
+              <p className="text-xs text-gray-500">{number(row.total_bottles || row.income || 0)} bottles/activity</p>
+            </div>
+            <p className="font-bold text-primary">{formatValue(row[valueKey])}</p>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -387,14 +401,15 @@ export default function ReportsPage() {
             <StatCard label="Walk-in Bottles" value={number(report.summary?.walkin_bottles)} tone="amber" icon={Users} sub={`${number(report.summary?.walkin_deliveries)} visits`} />
           </div>
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="card p-5">
-              <h2 className="mb-4 font-semibold">Daily Sales Trend</h2>
-              <BarChart data={monthlyRows} valueKey="total_sales" color="#16a34a" formatValue={currency} />
-            </div>
-            <div className="card p-5">
-              <h2 className="mb-4 font-semibold">Home vs Walk-in Bottles</h2>
-              <SplitBars data={monthlyRows} />
-            </div>
+            <DonutChart
+              title="Bottle Type Share"
+              totalLabel="Home delivery and walk-in refill split"
+              segments={[
+                { label: 'Home Bottles', value: report.summary?.home_bottles, color: '#2563eb' },
+                { label: 'Walk-in Bottles', value: report.summary?.walkin_bottles, color: '#16a34a' },
+              ]}
+            />
+            <DailyHighlights rows={monthlyRows} valueKey="total_sales" formatValue={currency} />
           </div>
           <ReportTable rows={monthlyRows} columns={[
             ['day', 'Date'],
@@ -496,10 +511,15 @@ export default function ReportsPage() {
             <StatCard label="Net Profit" value={currency(report.profit)} tone={Number(report.profit || 0) >= 0 ? 'blue' : 'amber'} icon={WalletCards} />
           </div>
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div className="card p-5">
-              <h2 className="mb-4 font-semibold">Daily Profit Trend</h2>
-              <BarChart data={report.daily || []} valueKey="profit" color="#2563eb" formatValue={currency} />
-            </div>
+            <DonutChart
+              title="Money Movement"
+              totalLabel="Income, paid expenses, and supplier balance"
+              segments={[
+                { label: 'Income', value: report.income, color: '#16a34a', format: currency },
+                { label: 'Expense Paid', value: report.expense_paid, color: '#ef4444', format: currency },
+                { label: 'Supplier Payables', value: report.supplier_payables, color: '#f59e0b', format: currency },
+              ]}
+            />
             <div className="card p-5">
               <h2 className="mb-4 font-semibold">Expense Breakdown</h2>
               <ReportTable rows={report.expense_breakdown || []} columns={[

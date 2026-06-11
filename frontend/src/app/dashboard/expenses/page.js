@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Plus, X } from 'lucide-react'
+import { Plus, Trash2, X } from 'lucide-react'
 import CenterAlert from '../../../components/CenterAlert'
+import CenterDialog from '../../../components/CenterDialog'
+import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 
@@ -18,27 +20,32 @@ const expenseTypes = [
   { value: 'other', label: 'Other' },
 ]
 
+const purchaseExpenseTypes = ['bottles_purchase', 'caps', 'seals', 'labels', 'packaging']
 const expenseTypeLabel = expenseTypes.reduce((map, type) => ({ ...map, [type.value]: type.label }), {})
+const emptyForm = () => ({
+  expense_type: 'fuel',
+  amount: '',
+  paid_amount: '',
+  supplier_name: '',
+  supplier_phone: '',
+  description: '',
+  expense_date: new Date().toISOString().split('T')[0]
+})
 
 export default function ExpensesPage() {
+  const { user } = useAuth()
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({
-    expense_type: 'fuel',
-    amount: '',
-    paid_amount: '',
-    supplier_name: '',
-    supplier_phone: '',
-    description: '',
-    expense_date: new Date().toISOString().split('T')[0]
-  })
+  const [form, setForm] = useState(emptyForm())
   const [summary, setSummary] = useState(null)
   const [filter, setFilter] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear()
   })
   const [errorAlert, setErrorAlert] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null })
+  const canDelete = user?.type !== 'staff'
 
   useEffect(() => {
     loadExpenses()
@@ -65,27 +72,36 @@ export default function ExpensesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await axios.post(`${API_URL}/expenses`, form)
-      setShowModal(false)
-      setForm({
-        expense_type: 'fuel',
-        amount: '',
-        paid_amount: '',
-        supplier_name: '',
-        supplier_phone: '',
-        description: '',
-        expense_date: new Date().toISOString().split('T')[0]
+      const isPurchaseExpense = purchaseExpenseTypes.includes(form.expense_type)
+      await axios.post(`${API_URL}/expenses`, {
+        ...form,
+        paid_amount: isPurchaseExpense ? form.paid_amount : form.amount,
+        supplier_name: isPurchaseExpense ? form.supplier_name : '',
+        supplier_phone: isPurchaseExpense ? form.supplier_phone : ''
       })
+      setShowModal(false)
+      setForm(emptyForm())
       loadExpenses()
       loadSummary()
     } catch (err) { setErrorAlert(getRequestErrorMessage(err, 'Unable to record expense right now.')) }
   }
 
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/expenses/${id}`)
+      loadExpenses()
+      loadSummary()
+    } catch (err) {
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to delete expense.'))
+    }
+  }
+
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0)
   const totalPaid = expenses.reduce((s, e) => s + Number(e.paid_amount ?? e.amount), 0)
   const totalPayable = expenses.reduce((s, e) => s + Number(e.outstanding_amount || 0), 0)
+  const isPurchaseExpense = purchaseExpenseTypes.includes(form.expense_type)
   const formAmount = Number(form.amount || 0)
-  const formPaid = form.paid_amount === '' ? formAmount : Number(form.paid_amount || 0)
+  const formPaid = !isPurchaseExpense || form.paid_amount === '' ? formAmount : Number(form.paid_amount || 0)
   const formBalance = Math.max(0, formAmount - formPaid)
 
   return (
@@ -145,13 +161,14 @@ export default function ExpensesPage() {
                 <th>Total Bill</th>
                 <th>Paid</th>
                 <th>Balance</th>
+                {canDelete && <th>Action</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-8">Loading...</td></tr>
+                <tr><td colSpan={canDelete ? 8 : 7} className="text-center py-8">Loading...</td></tr>
               ) : expenses.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400">No expenses found</td></tr>
+                <tr><td colSpan={canDelete ? 8 : 7} className="text-center py-8 text-gray-400">No expenses found</td></tr>
               ) : (
                 expenses.map(e => (
                   <tr key={e.id}>
@@ -171,6 +188,18 @@ export default function ExpensesPage() {
                     <td className={Number(e.outstanding_amount || 0) > 0 ? 'font-bold text-orange-600' : 'text-gray-500'}>
                       Rs {Number(e.outstanding_amount || 0).toLocaleString()}
                     </td>
+                    {canDelete && (
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDialog({ open: true, id: e.id })}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete expense"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -192,31 +221,41 @@ export default function ExpensesPage() {
             <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
-                <select value={form.expense_type} onChange={e => setForm({...form, expense_type: e.target.value})} className="input">
+                <select value={form.expense_type} onChange={e => setForm({
+                  ...form,
+                  expense_type: e.target.value,
+                  paid_amount: '',
+                  supplier_name: '',
+                  supplier_phone: ''
+                })} className="input">
                   {expenseTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Supplier Name</label>
-                  <input type="text" value={form.supplier_name} onChange={e => setForm({...form, supplier_name: e.target.value})} className="input" placeholder="Optional" />
+              {isPurchaseExpense && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Supplier Name</label>
+                    <input type="text" value={form.supplier_name} onChange={e => setForm({...form, supplier_name: e.target.value})} className="input" placeholder="Optional" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Supplier Phone</label>
+                    <input type="text" value={form.supplier_phone} onChange={e => setForm({...form, supplier_phone: e.target.value})} className="input" placeholder="Optional" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Supplier Phone</label>
-                  <input type="text" value={form.supplier_phone} onChange={e => setForm({...form, supplier_phone: e.target.value})} className="input" placeholder="Optional" />
-                </div>
-              </div>
+              )}
               <div>
-                <label className="block text-sm font-medium mb-1">Total Bill Amount *</label>
+                <label className="block text-sm font-medium mb-1">{isPurchaseExpense ? 'Total Bill Amount *' : 'Amount *'}</label>
                 <input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="input" required />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Paid Amount</label>
-                <input type="number" min="0" value={form.paid_amount} onChange={e => setForm({...form, paid_amount: e.target.value})} className="input" placeholder="Leave blank if fully paid" />
-                <p className="mt-1 text-xs text-gray-500">
-                  Remaining balance: Rs {Number.isFinite(formBalance) ? formBalance.toLocaleString() : 0}
-                </p>
-              </div>
+              {isPurchaseExpense && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Paid Amount</label>
+                  <input type="number" min="0" value={form.paid_amount} onChange={e => setForm({...form, paid_amount: e.target.value})} className="input" placeholder="Leave blank if fully paid" />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Remaining balance: Rs {Number.isFinite(formBalance) ? formBalance.toLocaleString() : 0}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1">Date</label>
                 <input type="date" value={form.expense_date} onChange={e => setForm({...form, expense_date: e.target.value})} className="input" />
@@ -231,6 +270,19 @@ export default function ExpensesPage() {
         </div>
       )}
       <CenterAlert open={!!errorAlert} title="Expense Error" message={errorAlert} onClose={() => setErrorAlert('')} />
+      <CenterDialog
+        open={confirmDialog.open}
+        type="confirm"
+        title="Delete expense?"
+        message="This expense will be removed from totals and reports."
+        confirmText="Delete"
+        onClose={() => setConfirmDialog({ open: false, id: null })}
+        onConfirm={() => {
+          const id = confirmDialog.id
+          setConfirmDialog({ open: false, id: null })
+          if (id) handleDelete(id)
+        }}
+      />
     </div>
   )
 }

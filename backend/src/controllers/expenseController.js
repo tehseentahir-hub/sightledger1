@@ -77,6 +77,21 @@ const createExpense = (req, res) => {
   );
 };
 
+const deleteExpense = (req, res) => {
+  const { shop_id, type } = req.user;
+  const { id } = req.params;
+
+  if (type === 'staff') {
+    return res.status(403).json({ message: 'Only shop owner can delete expenses' });
+  }
+
+  db.run('DELETE FROM expenses WHERE id = ? AND shop_id = ?', [id, shop_id], function(err) {
+    if (err) return res.status(500).json({ message: 'Error deleting expense', error: err.message });
+    if (this.changes === 0) return res.status(404).json({ message: 'Expense not found' });
+    res.json({ message: 'Expense deleted successfully' });
+  });
+};
+
 const getExpenseSummary = (req, res) => {
   const { shop_id } = req.user;
   const { month, year } = req.query;
@@ -139,4 +154,4 @@ const getExpenseSummary = (req, res) => {
   );
 };
 
-module.exports = { getExpenses, createExpense, getExpenseSummary };
+module.exports = { getExpenses, createExpense, deleteExpense, getExpenseSummary };

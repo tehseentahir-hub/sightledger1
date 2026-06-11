@@ -9,25 +9,12 @@ import { isHybridMode, isPetTradingMode } from '../../lib/businessMode'
 import HybridDashboardView from '../../components/pet/HybridDashboardView'
 import PetDashboardView from '../../components/pet/PetDashboardView'
 
-function MiniChart({ data = [], valueKey = 'bottles', color = '#16a34a' }) {
-  if (!data.length) return null
-  const values = data.map(d => Number(d[valueKey] || 0))
-  const max = Math.max(1, ...values)
-  const width = data.length * 32
-  const height = 60
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-16">
-      {data.map((item, i) => {
-        const val = Number(item[valueKey] || 0)
-        const barWidth = 20
-        const barHeight = Math.max(4, (val / max) * (height - 10))
-        const x = i * 32 + 6
-        const y = height - barHeight
-        return <rect key={i} x={x} y={y} width={barWidth} height={barHeight} rx="3" fill={color} opacity="0.8" />
-      })}
-    </svg>
-  )
+function findPeakDay(data = [], valueKey = 'bottles') {
+  return data.reduce((best, item) => {
+    const value = Number(item[valueKey] || 0)
+    if (!best || value > best.value) return { ...item, value }
+    return best
+  }, null)
 }
 
 export default function Dashboard() {
@@ -95,6 +82,11 @@ export default function Dashboard() {
   const isExpired = Boolean(expiryDate && rawDaysLeft < 0)
   const packageName = normalizePlanName(activeShop?.subscription_type)
   const expiryLabel = expiryDate ? new Date(activeShop.subscription_expiry).toLocaleDateString('en-GB') : 'N/A'
+  const walkinTrend = data?.walkin_trend || []
+  const avgWalkinBottles = walkinTrend.length
+    ? Math.round(walkinTrend.reduce((sum, row) => sum + Number(row.walkin_bottles || 0), 0) / walkinTrend.length)
+    : 0
+  const peakWalkinDay = findPeakDay(walkinTrend, 'walkin_bottles')
 
   if (hybridMode) {
     return <HybridDashboardView user={activeShop} />
@@ -268,8 +260,15 @@ export default function Dashboard() {
             </div>
             <p className="text-4xl font-bold text-blue-600">{data?.last7_walkin_bottles || 0}</p>
             <p className="text-sm text-blue-600/70 mt-1">{data?.last7_walkins || 0} visits</p>
-            <div className="mt-3">
-              <MiniChart data={data?.walkin_trend || []} valueKey="walkin_bottles" color="#2563eb" />
+            <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-white/70 p-3">
+                <p className="text-xs text-blue-500">Avg / day</p>
+                <p className="font-bold text-blue-700">{avgWalkinBottles}</p>
+              </div>
+              <div className="rounded-lg bg-white/70 p-3">
+                <p className="text-xs text-blue-500">Peak day</p>
+                <p className="font-bold text-blue-700">{peakWalkinDay?.value || 0}</p>
+              </div>
             </div>
           </div>
 
