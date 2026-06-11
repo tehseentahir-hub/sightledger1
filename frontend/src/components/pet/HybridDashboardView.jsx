@@ -126,8 +126,8 @@ export default function HybridDashboardView({ user }) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-medium text-primary">Hybrid Business Mode</p>
-          <h1 className="text-2xl font-bold text-gray-900">19L Delivery + PET Inventory</h1>
-          <p className="mt-1 text-sm text-gray-500">Track route deliveries, PET sales, inventory, and staff entries in one workspace.</p>
+          <h1 className="text-2xl font-bold text-gray-900">19L Delivery + Packaged Bottles</h1>
+          <p className="mt-1 text-sm text-gray-500">Track route deliveries, packaged bottle sales, stock, invoices, and staff entries in one workspace.</p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
           <Calendar className="h-4 w-4" />
@@ -141,13 +141,13 @@ export default function HybridDashboardView({ user }) {
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <MetricCard label="19L deliveries today" value={number(waterData?.today_deliveries)} sub={`${number(waterData?.today_bottles)} bottles`} icon={Truck} tone="blue" href="/dashboard/deliveries" />
-        <MetricCard label="PET units sold today" value={number(petData?.today_sales_qty)} sub={`${number(petData?.current_stock)} units in stock`} icon={ShoppingCart} tone="green" href="/dashboard/stock" />
+        <MetricCard label="Packaged bottles sold today" value={number(petData?.today_sales_qty)} sub={`${number(petData?.current_stock)} empty bottles in stock`} icon={ShoppingCart} tone="green" href="/dashboard/stock" />
         {showFinancials ? (
           <MetricCard label="This month revenue" value={currency(Number(waterData?.monthly_sales || 0) + Number(petData?.month_sales_amount || 0))} sub={`19L ${currency(waterData?.monthly_sales)} | PET ${currency(petData?.month_sales_amount)}`} icon={Wallet} tone="purple" />
         ) : (
-          <MetricCard label="This month activity" value={`${number(waterData?.month_bottles)} + ${number(petData?.month_sales_qty)}`} sub="19L bottles + PET units" icon={Package} tone="purple" />
+          <MetricCard label="This month activity" value={`${number(waterData?.month_bottles)} + ${number(petData?.month_sales_qty)}`} sub="19L bottles + packaged bottles" icon={Package} tone="purple" />
         )}
-        <MetricCard label="Low stock PET items" value={number(petData?.low_stock_count)} sub={`${number(waterData?.bottles_outside)} 19L bottles outside`} icon={AlertCircle} tone={Number(petData?.low_stock_count || 0) > 0 ? 'red' : 'amber'} href="/dashboard/items" />
+        <MetricCard label="Low stock products" value={number(petData?.low_stock_count)} sub={`${number(waterData?.bottles_outside)} 19L bottles outside`} icon={AlertCircle} tone={Number(petData?.low_stock_count || 0) > 0 ? 'red' : 'amber'} href="/dashboard/items" />
       </div>
 
       {showFinancials && (
@@ -161,7 +161,7 @@ export default function HybridDashboardView({ user }) {
             <p className="mt-1 text-2xl font-bold text-red-600">{currency(waterData?.pending_payments)}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">PET Month Sales</p>
+            <p className="text-sm text-gray-500">Packaged Bottle Month Sales</p>
             <p className="mt-1 text-2xl font-bold text-primary">{currency(petData?.month_sales_amount)}</p>
           </div>
         </div>
@@ -187,8 +187,8 @@ export default function HybridDashboardView({ user }) {
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-gray-900">PET Sales Trend</h2>
-              <p className="text-sm text-gray-500">Last 7 days PET quantity movement.</p>
+              <h2 className="font-semibold text-gray-900">Packaged Bottle Sales Trend</h2>
+              <p className="text-sm text-gray-500">Last 7 days packaged bottle sales quantity.</p>
             </div>
             <ArrowDownUp className="h-5 w-5 text-primary" />
           </div>
@@ -200,7 +200,7 @@ export default function HybridDashboardView({ user }) {
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Low Stock Watch</h2>
-            <Link href="/dashboard/items" className="text-sm text-primary hover:underline">View PET Items</Link>
+            <Link href="/dashboard/items" className="text-sm text-primary hover:underline">View Products</Link>
           </div>
           <div className="space-y-3">
             {(petData?.low_stock_items || []).length ? petData.low_stock_items.map((item) => (
@@ -223,8 +223,8 @@ export default function HybridDashboardView({ user }) {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <ActionLink href="/dashboard/customers" label="Add 19L Customer" />
             <ActionLink href="/dashboard/deliveries" label="Record 19L Delivery" />
-            <ActionLink href="/dashboard/items" label="Manage PET Items" />
-            <ActionLink href="/dashboard/stock" label="Record PET Sale" />
+            <ActionLink href="/dashboard/items" label="Manage Products" />
+            <ActionLink href="/dashboard/stock" label="Record Packaged Bottle Sale" />
             {showFinancials && <ActionLink href="/dashboard/payments" label="Record Payment" />}
             {showFinancials && <ActionLink href="/dashboard/invoice" label="Generate Invoice" />}
           </div>

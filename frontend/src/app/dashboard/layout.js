@@ -23,8 +23,8 @@ const standardMenuItems = [
 
 const petOwnerMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/items', icon: Package, label: 'Inventory Items' },
-  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Stock & Sales' },
+  { href: '/dashboard/items', icon: Package, label: 'Products' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Sales & Invoices' },
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
   { href: '/dashboard/expenses', icon: DollarSign, label: 'Expenses' },
   { href: '/dashboard/settings', icon: SlidersHorizontal, label: 'Settings' },
@@ -32,8 +32,8 @@ const petOwnerMenuItems = [
 
 const petCashierMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/items', icon: Package, label: 'Inventory Items' },
-  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Stock & Sales' },
+  { href: '/dashboard/items', icon: Package, label: 'Products' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'Sales & Invoices' },
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
 ]
 
@@ -42,8 +42,8 @@ const hybridOwnerMenuItems = [
   { href: '/dashboard/customers', icon: Users, label: 'Customers' },
   { href: '/dashboard/deliveries', icon: Truck, label: '19L Deliveries' },
   { href: '/dashboard/inventory', icon: Package, label: '19L Inventory' },
-  { href: '/dashboard/items', icon: Package, label: 'PET Items' },
-  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Stock & Sales' },
+  { href: '/dashboard/items', icon: Package, label: 'Packaged Products' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Sales' },
   { href: '/dashboard/payments', icon: DollarSign, label: 'Payments' },
   { href: '/dashboard/invoice', icon: FileText, label: 'Invoice' },
   { href: '/dashboard/expenses', icon: TrendingUp, label: 'Expenses' },
@@ -55,8 +55,8 @@ const hybridCashierMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/customers', icon: Users, label: 'Customers' },
   { href: '/dashboard/deliveries', icon: Truck, label: '19L Deliveries' },
-  { href: '/dashboard/items', icon: Package, label: 'PET Items' },
-  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Stock & Sales' },
+  { href: '/dashboard/items', icon: Package, label: 'Packaged Products' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Sales' },
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
 ]
 

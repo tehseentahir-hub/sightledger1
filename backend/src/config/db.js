@@ -160,8 +160,23 @@ function initializeDatabase() {
       cost_price REAL DEFAULT 0,
       sale_price REAL DEFAULT 0,
       opening_stock INTEGER DEFAULT 0,
+      min_stock_alert INTEGER DEFAULT 20,
       is_active INTEGER DEFAULT 1,
       created_by INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(shop_id) REFERENCES shops(id)
+    )`);
+
+    db.run(`ALTER TABLE inventory_items ADD COLUMN min_stock_alert INTEGER DEFAULT 20`, (err) => {});
+
+    db.run(`CREATE TABLE IF NOT EXISTS pet_customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT,
+      address TEXT,
+      customer_type TEXT DEFAULT 'Retail',
+      is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(shop_id) REFERENCES shops(id)
     )`);
@@ -170,17 +185,27 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       shop_id INTEGER NOT NULL,
       item_id INTEGER NOT NULL,
+      customer_id INTEGER,
+      invoice_number TEXT,
       txn_type TEXT NOT NULL,
       quantity INTEGER NOT NULL,
       unit_price REAL DEFAULT 0,
+      payment_type TEXT DEFAULT 'cash',
+      paid_amount REAL DEFAULT 0,
       notes TEXT,
       txn_date TEXT NOT NULL,
       created_by INTEGER,
       created_by_role TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(shop_id) REFERENCES shops(id),
-      FOREIGN KEY(item_id) REFERENCES inventory_items(id)
+      FOREIGN KEY(item_id) REFERENCES inventory_items(id),
+      FOREIGN KEY(customer_id) REFERENCES pet_customers(id)
     )`);
+
+    db.run(`ALTER TABLE inventory_transactions ADD COLUMN customer_id INTEGER`, (err) => {});
+    db.run(`ALTER TABLE inventory_transactions ADD COLUMN invoice_number TEXT`, (err) => {});
+    db.run(`ALTER TABLE inventory_transactions ADD COLUMN payment_type TEXT DEFAULT 'cash'`, (err) => {});
+    db.run(`ALTER TABLE inventory_transactions ADD COLUMN paid_amount REAL DEFAULT 0`, (err) => {});
 
     // Insert current Sight Ledger plans.
     db.run(`DELETE FROM plans`);

@@ -37,7 +37,7 @@ export function canViewPetFinancials(subject) {
 
 export function getBusinessModeLabel(value) {
   const mode = normalizeBusinessMode(value)
-  if (mode === BUSINESS_MODES.PET_TRADING) return 'PET / Multi-Size Inventory'
-  if (mode === BUSINESS_MODES.HYBRID) return 'Hybrid: 19L + PET Inventory'
+  if (mode === BUSINESS_MODES.PET_TRADING) return 'Packaged Bottle Business'
+  if (mode === BUSINESS_MODES.HYBRID) return 'Hybrid: 19L Delivery + Packaged Bottles'
   return 'Standard Water Delivery'
 }

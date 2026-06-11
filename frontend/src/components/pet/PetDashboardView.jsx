@@ -8,6 +8,9 @@ import { AlertTriangle, ArrowDownUp, Boxes, Package, ShoppingCart, TrendingUp } 
 import { API_URL, getRequestErrorMessage } from '../../lib/api'
 import { canViewPetFinancials } from '../../lib/businessMode'
 
+const number = (value) => Number(value || 0).toLocaleString()
+const money = (value) => `Rs ${Number(value || 0).toLocaleString()}`
+
 function MetricCard({ label, value, sub, tone = 'blue', icon: Icon }) {
   const tones = {
     blue: 'from-blue-500 to-sky-500',
@@ -19,10 +22,8 @@ function MetricCard({ label, value, sub, tone = 'blue', icon: Icon }) {
 
   return (
     <div className={`rounded-2xl bg-gradient-to-br ${tones[tone]} p-5 text-white shadow-lg`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-          <Icon className="h-5 w-5" />
-        </div>
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+        <Icon className="h-5 w-5" />
       </div>
       <p className="text-sm text-white/80">{label}</p>
       <p className="mt-1 text-3xl font-bold">{value}</p>
@@ -33,7 +34,7 @@ function MetricCard({ label, value, sub, tone = 'blue', icon: Icon }) {
 
 function QtyTrendChart({ rows = [] }) {
   if (!rows.length) {
-    return <p className="text-sm text-gray-400">No sales trend data yet.</p>
+    return <p className="text-sm text-gray-400">No bottle sales trend yet.</p>
   }
 
   const max = Math.max(1, ...rows.map((row) => Number(row.sales_qty || 0)))
@@ -77,7 +78,7 @@ export default function PetDashboardView({ user }) {
       const res = await axios.get(`${API_URL}/pet/summary`)
       setData(res.data)
     } catch (err) {
-      setError(getRequestErrorMessage(err, 'Unable to load PET dashboard right now.'))
+      setError(getRequestErrorMessage(err, 'Unable to load packaged bottle dashboard right now.'))
     }
     setLoading(false)
   }
@@ -93,7 +94,7 @@ export default function PetDashboardView({ user }) {
   if (error) {
     return (
       <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-red-700">
-        <p className="font-semibold">PET dashboard error</p>
+        <p className="font-semibold">Dashboard Error</p>
         <p className="mt-1 text-sm">{error}</p>
       </div>
     )
@@ -103,28 +104,28 @@ export default function PetDashboardView({ user }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-primary">PET / Multi-Size Inventory</p>
+          <p className="text-sm font-medium text-primary">Packaged Bottle Business</p>
           <h1 className="text-2xl font-bold text-gray-900">Business Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track daily sales quantities, stock position, and low stock items for packaged bottle business.
+            Track empty bottle stock, filled bottle sales, invoices, and low stock products.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/dashboard/items" className="btn btn-secondary">Manage Items</Link>
-          <Link href="/dashboard/stock" className="btn btn-primary">Add Stock / Sale</Link>
+          <Link href="/dashboard/items" className="btn btn-secondary">Manage Products</Link>
+          <Link href="/dashboard/stock" className="btn btn-primary">Record Sale</Link>
         </div>
       </div>
 
       <div className={`grid gap-4 ${showFinancials ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
-        <MetricCard label="Total SKUs" value={data?.total_skus || 0} tone="blue" icon={Boxes} />
-        <MetricCard label="Current Stock" value={Number(data?.current_stock || 0).toLocaleString()} tone="green" icon={Package} />
-        <MetricCard label="Today Sales Qty" value={Number(data?.today_sales_qty || 0).toLocaleString()} tone="amber" icon={ShoppingCart} />
-        <MetricCard label="This Week Qty" value={Number(data?.week_sales_qty || 0).toLocaleString()} tone="purple" icon={ArrowDownUp} />
+        <MetricCard label="Products" value={data?.total_products || data?.total_skus || 0} tone="blue" icon={Boxes} />
+        <MetricCard label="Empty Bottles in Stock" value={number(data?.current_stock)} tone="green" icon={Package} />
+        <MetricCard label="Bottles Sold Today" value={number(data?.today_sales_qty)} tone="amber" icon={ShoppingCart} />
+        <MetricCard label="Bottles Sold This Week" value={number(data?.week_sales_qty)} tone="purple" icon={ArrowDownUp} />
         {showFinancials && (
           <MetricCard
-            label="This Month Sales"
-            value={`Rs ${Number(data?.month_sales_amount || 0).toLocaleString()}`}
-            sub={`${Number(data?.month_sales_qty || 0).toLocaleString()} units sold`}
+            label="This Month Revenue"
+            value={money(data?.month_sales_amount)}
+            sub={`${number(data?.month_sales_qty)} bottles sold`}
             tone="slate"
             icon={TrendingUp}
           />
@@ -133,7 +134,7 @@ export default function PetDashboardView({ user }) {
 
       {!showFinancials && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700">
-          Cashier view shows quantity movement only. Owner login is required to view sales amounts.
+          Cashier view shows bottle quantities only. Owner login is required to view revenue.
         </div>
       )}
 
@@ -141,8 +142,8 @@ export default function PetDashboardView({ user }) {
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-gray-900">Last 7 Days Sales Trend</h2>
-              <p className="text-sm text-gray-500">Daily sold quantity</p>
+              <h2 className="font-semibold text-gray-900">Last 7 Days Bottle Sales</h2>
+              <p className="text-sm text-gray-500">Daily bottles sold</p>
             </div>
           </div>
           <QtyTrendChart rows={data?.trend || []} />
@@ -151,11 +152,11 @@ export default function PetDashboardView({ user }) {
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-gray-900">Low Stock Items</h2>
-              <p className="text-sm text-gray-500">Items that need attention soon</p>
+              <h2 className="font-semibold text-gray-900">Low Stock Products</h2>
+              <p className="text-sm text-gray-500">Products that need empty bottle stock soon</p>
             </div>
             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-              {data?.low_stock_count || 0} items
+              {number(data?.low_stock_count)} products
             </span>
           </div>
           <div className="space-y-3">
@@ -163,16 +164,16 @@ export default function PetDashboardView({ user }) {
               <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                 <div>
                   <p className="font-medium text-gray-900">{item.item_name}</p>
-                  <p className="text-sm text-gray-500">{item.size_label} • {item.unit_type}</p>
+                  <p className="text-sm text-gray-500">{item.size_label}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-amber-600">{Number(item.current_stock || 0).toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">units left</p>
+                  <p className="text-xl font-bold text-amber-600">{number(item.current_stock)}</p>
+                  <p className="text-xs text-gray-500">bottles left</p>
                 </div>
               </div>
             )) : (
               <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
-                No low stock item right now.
+                No low stock product right now.
               </div>
             )}
           </div>
@@ -183,23 +184,23 @@ export default function PetDashboardView({ user }) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Recent Entries</h2>
-            <p className="text-sm text-gray-500">Latest stock and sale activity</p>
+            <p className="text-sm text-gray-500">Latest empty bottle stock and sale activity</p>
           </div>
-          <Link href="/dashboard/stock" className="text-sm font-medium text-primary hover:underline">Open stock book</Link>
+          <Link href="/dashboard/stock" className="text-sm font-medium text-primary hover:underline">Open sales</Link>
         </div>
         <div className="space-y-3">
           {data?.recent_transactions?.length ? data.recent_transactions.map((entry) => (
             <div key={entry.id} className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white p-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-medium text-gray-900">{entry.item_name} • {entry.size_label}</p>
+                <p className="font-medium text-gray-900">{entry.item_name} | {entry.size_label}</p>
                 <p className="text-sm text-gray-500">
-                  {entry.txn_type.replaceAll('_', ' ')} • {entry.txn_date} • {entry.quantity} {entry.unit_type}
+                  {entry.txn_type === 'stock_in' ? 'Empty bottles added' : entry.txn_type === 'sale' ? 'Sale invoice' : entry.txn_type === 'damage' ? 'Damaged / waste bottles' : 'Sale return'} | {entry.txn_date} | {entry.quantity} bottles
                 </p>
               </div>
               <div className="text-left md:text-right">
-                <p className="font-semibold text-gray-900">{entry.quantity} units</p>
+                <p className="font-semibold text-gray-900">{entry.quantity} bottles</p>
                 {showFinancials && entry.unit_price !== null && (
-                  <p className="text-sm text-gray-500">Rs {Number(entry.unit_price || 0).toLocaleString()} / unit</p>
+                  <p className="text-sm text-gray-500">Rs {Number(entry.unit_price || 0).toLocaleString()} / bottle</p>
                 )}
               </div>
             </div>

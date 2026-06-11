@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { AlertCircle, BarChart3, Calendar, Package, RefreshCcw, TrendingUp } from 'lucide-react'
+import { AlertCircle, BarChart3, Calendar, FileText, Package, RefreshCcw, Star, TrendingUp, Users } from 'lucide-react'
 
 import { API_URL, getRequestErrorMessage } from '../../lib/api'
 import { canViewPetFinancials } from '../../lib/businessMode'
+
+const money = (value) => `Rs ${Number(value || 0).toLocaleString()}`
+const number = (value) => Number(value || 0).toLocaleString()
 
 function StatCard({ label, value, sub, tone = 'blue', icon: Icon }) {
   const tones = {
@@ -13,12 +16,13 @@ function StatCard({ label, value, sub, tone = 'blue', icon: Icon }) {
     green: 'from-emerald-500 to-green-500',
     amber: 'from-amber-500 to-orange-500',
     purple: 'from-violet-500 to-purple-500',
+    rose: 'from-rose-500 to-red-500',
   }
 
   return (
     <div className={`rounded-2xl bg-gradient-to-br ${tones[tone]} p-5 text-white shadow-lg`}>
-      <div className="mb-3 flex items-center justify-between">
-        <Icon className="h-5 w-5 text-white/85" />
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+        <Icon className="h-5 w-5" />
       </div>
       <p className="text-sm text-white/80">{label}</p>
       <p className="mt-1 text-3xl font-bold">{value}</p>
@@ -29,28 +33,28 @@ function StatCard({ label, value, sub, tone = 'blue', icon: Icon }) {
 
 function TrendChart({ rows = [], showFinancials = false }) {
   if (!rows.length) {
-    return <p className="text-sm text-gray-400">No report trend available for selected dates.</p>
+    return <p className="text-sm text-gray-400">No sales trend available for selected dates.</p>
   }
 
   const key = showFinancials ? 'sales_amount' : 'sales_qty'
   const max = Math.max(1, ...rows.map((row) => Number(row[key] || 0)))
-  const width = Math.max(360, rows.length * 56)
+  const width = Math.max(360, rows.length * 58)
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} 180`} className="h-52 w-full min-w-[360px]">
+      <svg viewBox={`0 0 ${width} 188`} className="h-56 w-full min-w-[360px]">
         {rows.map((row, index) => {
           const value = Number(row[key] || 0)
-          const barHeight = Math.max(6, (value / max) * 110)
-          const x = index * 56 + 16
+          const barHeight = Math.max(6, (value / max) * 112)
+          const x = index * 58 + 16
           const label = String(row.txn_date || '').slice(-2)
           return (
             <g key={`${row.txn_date}-${index}`}>
-              <rect x={x} y={138 - barHeight} width="26" height={barHeight} rx="6" fill={showFinancials ? '#8b5cf6' : '#10b981'} />
-              <text x={x + 13} y={128 - barHeight} textAnchor="middle" fontSize="10" fill="#0f172a">
-                {showFinancials ? `Rs ${value}` : value}
+              <rect x={x} y={142 - barHeight} width="28" height={barHeight} rx="7" fill={showFinancials ? '#8b5cf6' : '#0ea5e9'} />
+              <text x={x + 14} y={132 - barHeight} textAnchor="middle" fontSize="10" fill="#0f172a">
+                {showFinancials ? money(value).replace('Rs ', '') : value}
               </text>
-              <text x={x + 13} y="160" textAnchor="middle" fontSize="10" fill="#64748b">{label || '-'}</text>
+              <text x={x + 14} y="166" textAnchor="middle" fontSize="10" fill="#64748b">{label || '-'}</text>
             </g>
           )
         })}
@@ -66,10 +70,14 @@ export default function PetReportsView({ user }) {
   const [filters, setFilters] = useState(() => {
     const today = new Date()
     const end = today.toISOString().split('T')[0]
-    const start = new Date(today.getTime() - (6 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
+    const start = new Date(today.getTime() - (29 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0]
     return { start_date: start, end_date: end }
   })
   const showFinancials = canViewPetFinancials(user)
+  const products = report?.product_summary || []
+  const customers = report?.customer_summary || []
+  const invoices = report?.recent_sales || []
+  const totalStock = useMemo(() => products.reduce((sum, row) => sum + Number(row.current_stock || 0), 0), [products])
 
   useEffect(() => {
     loadReport()
@@ -82,7 +90,7 @@ export default function PetReportsView({ user }) {
       const res = await axios.get(`${API_URL}/pet/reports`, { params: filters })
       setReport(res.data)
     } catch (err) {
-      setError(getRequestErrorMessage(err, 'Unable to load PET reports right now.'))
+      setError(getRequestErrorMessage(err, 'Unable to load packaged bottle reports right now.'))
     }
     setLoading(false)
   }
@@ -91,10 +99,10 @@ export default function PetReportsView({ user }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-primary">PET / Multi-Size Reports</p>
-          <h1 className="text-2xl font-bold text-gray-900">Sales & Stock Reports</h1>
+          <p className="text-sm font-medium text-primary">Packaged Bottle Reports</p>
+          <h1 className="text-2xl font-bold text-gray-900">Sales, Stock & Invoice Reports</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track item-wise quantities, low stock, and daily movement for PET inventory.
+            See how many bottles are in stock, sold, invoiced, and which customers are buying.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -108,7 +116,7 @@ export default function PetReportsView({ user }) {
 
       {!showFinancials && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700">
-          Cashier report view hides sales amounts. You can still review quantities, stock movement, and low stock items.
+          Cashier report view hides rupee amounts. Quantity, stock, and invoice records are still visible.
         </div>
       )}
 
@@ -120,41 +128,55 @@ export default function PetReportsView({ user }) {
 
       {!loading && error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-red-700">
-          <p className="font-semibold">PET reports error</p>
+          <p className="font-semibold">Report Error</p>
           <p className="mt-1 text-sm">{error}</p>
         </div>
       )}
 
       {!loading && !error && report && (
         <>
-          <div className={`grid gap-4 ${showFinancials ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}`}>
-            <StatCard label="Active SKUs" value={report.summary?.total_skus || 0} tone="blue" icon={Package} />
-            <StatCard label="Units Sold" value={Number(report.summary?.total_sold_qty || 0).toLocaleString()} tone="green" icon={TrendingUp} />
-            <StatCard label="Low Stock Items" value={report.summary?.low_stock_count || 0} tone="amber" icon={AlertCircle} />
-            {showFinancials && (
-              <StatCard
-                label="Sales Amount"
-                value={`Rs ${Number(report.summary?.total_sold_amount || 0).toLocaleString()}`}
-                tone="purple"
-                icon={BarChart3}
-              />
-            )}
+          <div className={`grid gap-4 ${showFinancials ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4'}`}>
+            <StatCard label="Products" value={number(report.summary?.total_products)} tone="blue" icon={Package} />
+            <StatCard label="Bottles in Stock" value={number(totalStock)} tone="green" icon={Package} />
+            <StatCard label="Bottles Sold" value={number(report.summary?.total_sold_qty)} tone="amber" icon={TrendingUp} />
+            <StatCard label="Low Stock" value={number(report.summary?.low_stock_count)} tone="rose" icon={AlertCircle} />
+            {showFinancials && <StatCard label="Revenue" value={money(report.summary?.total_sold_amount)} tone="purple" icon={BarChart3} />}
           </div>
+
+          {showFinancials && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <div className="mb-2 flex items-center gap-2 text-gray-500">
+                  <Star className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm">Top Selling Product</span>
+                </div>
+                <p className="text-xl font-bold text-gray-900">{report.summary?.top_product || 'No sales yet'}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <p className="text-sm text-gray-500">Outstanding Balance</p>
+                <p className="mt-1 text-2xl font-bold text-red-600">{money(report.summary?.total_outstanding)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <p className="text-sm text-gray-500">Invoice Records</p>
+                <p className="mt-1 text-2xl font-bold text-primary">{number(invoices.length)}</p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div className="card p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-gray-900">Daily Trend</h2>
+                <h2 className="font-semibold text-gray-900">Daily Sales Trend</h2>
               </div>
               <TrendChart rows={report.daily_trend || []} showFinancials={showFinancials} />
             </div>
 
             <div className="card p-5">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900">Low Stock Watch</h2>
+                <h2 className="font-semibold text-gray-900">Low Stock Products</h2>
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-                  {report.low_stock?.length || 0} items
+                  {number(report.low_stock?.length)} products
                 </span>
               </div>
               <div className="space-y-3">
@@ -162,88 +184,129 @@ export default function PetReportsView({ user }) {
                   <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                     <div>
                       <p className="font-medium text-gray-900">{item.item_name}</p>
-                      <p className="text-sm text-gray-500">{item.size_label} • {item.unit_type}</p>
+                      <p className="text-sm text-gray-500">{item.size_label}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-amber-600">{Number(item.current_stock || 0).toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">units left</p>
+                      <p className="text-lg font-bold text-amber-600">{number(item.current_stock)}</p>
+                      <p className="text-xs text-gray-500">bottles left</p>
                     </div>
                   </div>
                 )) : (
                   <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
-                    No low stock items found in this period.
+                    No low stock products right now.
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="card overflow-hidden">
-            <div className="border-b border-gray-100 px-5 py-4">
-              <h2 className="font-semibold text-gray-900">Item Summary</h2>
-              <p className="text-sm text-gray-500">Item-wise sold quantity and live stock position</p>
-            </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[820px]">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Size</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Unit</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Current Stock</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sold Qty</th>
-                    {showFinancials && <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Sales Amount</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {report.item_summary?.length ? report.item_summary.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{item.item_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{item.size_label}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{item.unit_type}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{Number(item.current_stock || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{Number(item.sold_qty || 0).toLocaleString()}</td>
-                      {showFinancials && <td className="px-4 py-3 text-sm text-gray-900">Rs {Number(item.sold_amount || 0).toLocaleString()}</td>}
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={showFinancials ? 6 : 5} className="px-4 py-8 text-center text-sm text-gray-400">No item data found for selected dates.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="space-y-3 p-4 md:hidden">
-              {report.item_summary?.length ? report.item_summary.map((item) => (
-                <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                  <p className="font-semibold text-gray-900">{item.item_name}</p>
-                  <p className="mt-1 text-sm text-gray-500">{item.size_label} • {item.unit_type}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-lg bg-gray-50 p-3">
-                      <p className="text-gray-500">Current Stock</p>
-                      <p className="mt-1 font-semibold text-gray-900">{Number(item.current_stock || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3">
-                      <p className="text-gray-500">Sold Qty</p>
-                      <p className="mt-1 font-semibold text-gray-900">{Number(item.sold_qty || 0).toLocaleString()}</p>
-                    </div>
-                    {showFinancials && (
-                      <div className="col-span-2 rounded-lg bg-gray-50 p-3">
-                        <p className="text-gray-500">Sales Amount</p>
-                        <p className="mt-1 font-semibold text-gray-900">Rs {Number(item.sold_amount || 0).toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )) : (
-                <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
-                  No item data found for selected dates.
-                </div>
-              )}
-            </div>
-          </div>
+          <ReportSection title="Product Reports" subtitle="Current stock, bottles sold, and revenue by product.">
+            <ResponsiveTable
+              rows={products}
+              empty="No product report found for selected dates."
+              columns={[
+                ['item_name', 'Product'],
+                ['size_label', 'Bottle Size'],
+                ['current_stock', 'Current Stock', number],
+                ['sold_today', 'Sold Today', number],
+                ['sold_qty', 'Sold in Period', number],
+                ...(showFinancials ? [['sold_amount', 'Revenue', money]] : []),
+              ]}
+            />
+          </ReportSection>
+
+          <ReportSection title="Customer Reports" subtitle="Sales by customer, customer type, purchase history, and pending amount.">
+            <ResponsiveTable
+              rows={customers}
+              empty="No customer purchase data found for selected dates."
+              columns={[
+                ['name', 'Customer'],
+                ['customer_type', 'Type'],
+                ['phone', 'Phone'],
+                ['purchased_qty', 'Bottles Purchased', number],
+                ...(showFinancials ? [['purchased_amount', 'Total Purchase', money], ['outstanding_balance', 'Outstanding', money]] : []),
+              ]}
+            />
+          </ReportSection>
+
+          <ReportSection title="Invoice History" subtitle="Recent sale invoices for selected dates.">
+            <ResponsiveTable
+              rows={invoices}
+              empty="No invoice found for selected dates."
+              columns={[
+                ['invoice_number', 'Invoice No'],
+                ['txn_date', 'Date'],
+                ['customer_name', 'Customer'],
+                ['item_name', 'Product'],
+                ['quantity', 'Quantity', number],
+                ...(showFinancials ? [['unit_price', 'Unit Price', money], ['total_amount', 'Total', money], ['paid_amount', 'Paid', money]] : []),
+              ]}
+            />
+          </ReportSection>
         </>
       )}
     </div>
+  )
+}
+
+function ReportSection({ title, subtitle, children }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="border-b border-gray-100 px-5 py-4">
+        <h2 className="font-semibold text-gray-900">{title}</h2>
+        <p className="text-sm text-gray-500">{subtitle}</p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ResponsiveTable({ rows = [], columns = [], empty }) {
+  return (
+    <>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[820px]">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map(([, label]) => (
+                <th key={label} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {rows.length ? rows.map((row, index) => (
+              <tr key={row.id || row.invoice_number || index}>
+                {columns.map(([key, label, formatter]) => (
+                  <td key={`${row.id || index}-${key}`} className="px-4 py-3 text-sm text-gray-800">
+                    {formatter ? formatter(row[key]) : (row[key] || '-')}
+                  </td>
+                ))}
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-8 text-center text-sm text-gray-400">{empty}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="space-y-3 p-4 md:hidden">
+        {rows.length ? rows.map((row, index) => (
+          <div key={row.id || row.invoice_number || index} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            {columns.map(([key, label, formatter]) => (
+              <div key={`${row.id || index}-${key}`} className="flex justify-between gap-3 border-b border-gray-50 py-2 last:border-0">
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</span>
+                <span className="text-right text-sm font-medium text-gray-900">{formatter ? formatter(row[key]) : (row[key] || '-')}</span>
+              </div>
+            ))}
+          </div>
+        )) : (
+          <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+            {empty}
+          </div>
+        )}
+      </div>
+    </>
   )
 }

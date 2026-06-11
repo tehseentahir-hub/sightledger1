@@ -6,6 +6,9 @@ const {
   createItem,
   updateItem,
   deleteItem,
+  getCustomers,
+  createCustomer,
+  updateCustomer,
   getTransactions,
   createTransaction,
   getSummary,
@@ -21,6 +24,10 @@ router.get('/items', getItems);
 router.post('/items', createItem);
 router.put('/items/:id', updateItem);
 router.delete('/items/:id', deleteItem);
+
+router.get('/customers', getCustomers);
+router.post('/customers', createCustomer);
+router.put('/customers/:id', updateCustomer);
 
 router.get('/transactions', getTransactions);
 router.post('/transactions', createTransaction);
