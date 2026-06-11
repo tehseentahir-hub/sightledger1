@@ -11,6 +11,7 @@ const {
   updateCustomer,
   getTransactions,
   createTransaction,
+  deleteTransaction,
   getSummary,
   getReports,
 } = require('../controllers/petController');
@@ -31,5 +32,6 @@ router.put('/customers/:id', updateCustomer);
 
 router.get('/transactions', getTransactions);
 router.post('/transactions', createTransaction);
+router.delete('/transactions/:id', deleteTransaction);
 
 module.exports = router;

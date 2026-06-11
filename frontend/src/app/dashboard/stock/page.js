@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Calendar, FileText, PackagePlus, Plus, Search, ShoppingCart, UserPlus } from 'lucide-react'
+import { Calendar, Download, FileText, PackagePlus, Search, ShoppingCart, Trash2, UserPlus } from 'lucide-react'
 
 import { useAuth } from '../../../context/AuthContext'
 import CenterDialog from '../../../components/CenterDialog'
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
 import { canViewPetFinancials, hasPetInventoryMode, isRestrictedPetCashier } from '../../../lib/businessMode'
+import { downloadPetInvoicePdf } from '../../../lib/petInvoicePdf'
 
 const entryTypes = [
   { value: 'sale', label: 'Record Sale' },
@@ -59,6 +60,7 @@ export default function PetStockPage() {
   const petMode = hasPetInventoryMode(user)
   const hideFinancials = isRestrictedPetCashier(user)
   const showFinancials = canViewPetFinancials(user)
+  const ownerMode = user?.type !== 'staff'
   const activeItems = useMemo(() => items.filter((item) => item.is_active), [items])
   const activeCustomers = useMemo(() => customers.filter((customer) => customer.is_active), [customers])
   const filteredCustomers = useMemo(() => {
@@ -164,6 +166,33 @@ export default function PetStockPage() {
       openDialog('error', 'Sales Entry Error', getRequestErrorMessage(err, 'Unable to save entry right now.'))
     }
     setSaving(false)
+  }
+
+  const downloadInvoice = (entry) => {
+    downloadPetInvoicePdf(entry, { shopName: user?.shop_name || user?.shopName || 'Water Shop' })
+  }
+
+  const deleteEntry = (entry) => {
+    const label = entry.txn_type === 'sale'
+      ? `invoice ${entry.invoice_number || entry.id}`
+      : `${entry.item_name} entry`
+    setDialog({
+      open: true,
+      type: 'confirm',
+      title: 'Delete Entry?',
+      message: `This will delete ${label}. Stock, revenue, and customer balance will be recalculated automatically.`,
+      onConfirm: async () => {
+        setDialog((prev) => ({ ...prev, open: false }))
+        try {
+          const res = await axios.delete(`${API_URL}/pet/transactions/${entry.id}`)
+          openDialog('success', 'Done', res.data?.message || 'Entry deleted successfully.')
+          loadPage()
+        } catch (err) {
+          openDialog('error', 'Delete Error', getRequestErrorMessage(err, 'Unable to delete this entry right now.'))
+        }
+      },
+      onCancel: () => setDialog((prev) => ({ ...prev, open: false })),
+    })
   }
 
   if (!mounted || loading || pageLoading) {
@@ -348,9 +377,34 @@ export default function PetStockPage() {
                   <div className="text-left md:text-right">
                     <p className="text-lg font-semibold text-gray-900">{formatNumber(entry.quantity)} bottles</p>
                     {showFinancials && entry.total_amount !== null && entry.txn_type === 'sale' && (
-                      <p className="text-sm text-gray-500">{formatMoney(entry.total_amount)}</p>
+                      <div className="text-sm text-gray-500">
+                        <p>{formatMoney(entry.total_amount)}</p>
+                        {Number(entry.outstanding_amount || 0) > 0 && (
+                          <p className="font-semibold text-red-600">Balance: {formatMoney(entry.outstanding_amount)}</p>
+                        )}
+                      </div>
                     )}
                   </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:justify-end">
+                  {showFinancials && entry.txn_type === 'sale' && (
+                    <button
+                      type="button"
+                      onClick={() => downloadInvoice(entry)}
+                      className="btn btn-secondary inline-flex items-center justify-center gap-2"
+                    >
+                      <Download size={16} /> Download PDF
+                    </button>
+                  )}
+                  {ownerMode && (
+                    <button
+                      type="button"
+                      onClick={() => deleteEntry(entry)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={16} /> Delete
+                    </button>
+                  )}
                 </div>
               </div>
             )) : (

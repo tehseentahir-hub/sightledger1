@@ -12,7 +12,7 @@ import { canViewPetFinancials, hasPetInventoryMode } from '../../../lib/business
 
 const emptyProduct = {
   item_name: '',
-  category: 'Empty PET Bottle',
+  category: 'Packaged Water Bottle',
   size_label: '',
   unit_type: 'bottles',
   opening_stock: '',
@@ -85,7 +85,7 @@ export default function PetItemsPage() {
     setEditingItem(item)
     setForm({
       item_name: item.item_name || '',
-      category: item.category || 'Empty PET Bottle',
+      category: item.category || 'Packaged Water Bottle',
       size_label: item.size_label || '',
       unit_type: item.unit_type || 'bottles',
       opening_stock: item.opening_stock ?? '',
@@ -108,6 +108,8 @@ export default function PetItemsPage() {
     try {
       const payload = {
         ...form,
+        category: 'Packaged Water Bottle',
+        unit_type: 'bottles',
         opening_stock: form.opening_stock === '' ? 0 : Number(form.opening_stock),
         min_stock_alert: form.min_stock_alert === '' ? 0 : Number(form.min_stock_alert),
         cost_price: form.cost_price === '' ? 0 : Number(form.cost_price),
@@ -204,7 +206,7 @@ export default function PetItemsPage() {
                       {isLow && <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700">Low stock</span>}
                       {!item.is_active && <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-600">Archived</span>}
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">{item.category} | {item.unit_type}</p>
+                    <p className="mt-1 text-sm text-gray-500">Empty bottle stock used for filling and selling</p>
                   </div>
                 </div>
                 {ownerMode && (
@@ -242,7 +244,7 @@ export default function PetItemsPage() {
           <div className="w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl max-h-[95svh]">
             <div className="border-b px-5 py-4 sm:px-6">
               <h2 className="text-xl font-bold text-gray-900">{editingItem ? 'Edit Product' : 'Add Product'}</h2>
-              <p className="mt-1 text-sm text-gray-500">Use simple product names such as 500ml Bottle, 1.5L Bottle, or 6L Bottle.</p>
+              <p className="mt-1 text-sm text-gray-500">Use simple product names such as 500ml Bottle, 1.5L Bottle, or 6L Bottle. Stock means empty bottles available before filling and selling.</p>
             </div>
             <form onSubmit={submitItem} className="space-y-4 p-5 sm:p-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -252,23 +254,17 @@ export default function PetItemsPage() {
                 <Field label="Bottle Size *">
                   <input value={form.size_label} onChange={(e) => setForm((prev) => ({ ...prev, size_label: e.target.value }))} className="input" placeholder="500ml, 1.5L, 6L" required />
                 </Field>
-                <Field label="Current / Opening Stock">
+                <Field label="Opening Empty Bottle Stock">
                   <input type="number" min="0" value={form.opening_stock} onChange={(e) => setForm((prev) => ({ ...prev, opening_stock: e.target.value }))} className="input" placeholder="1000" />
                 </Field>
                 <Field label="Minimum Stock Alert">
                   <input type="number" min="0" value={form.min_stock_alert} onChange={(e) => setForm((prev) => ({ ...prev, min_stock_alert: e.target.value }))} className="input" placeholder="100" />
                 </Field>
-                <Field label="Selling Price Per Bottle">
+                <Field label="Selling Price Per Filled Bottle">
                   <input type="number" min="0" step="0.01" value={form.sale_price} onChange={(e) => setForm((prev) => ({ ...prev, sale_price: e.target.value }))} className="input" placeholder="25" />
                 </Field>
                 <Field label="Cost Price Per Empty Bottle">
                   <input type="number" min="0" step="0.01" value={form.cost_price} onChange={(e) => setForm((prev) => ({ ...prev, cost_price: e.target.value }))} className="input" placeholder="12" />
-                </Field>
-                <Field label="Category">
-                  <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} className="input" />
-                </Field>
-                <Field label="Unit">
-                  <input value={form.unit_type} onChange={(e) => setForm((prev) => ({ ...prev, unit_type: e.target.value }))} className="input" />
                 </Field>
               </div>
 

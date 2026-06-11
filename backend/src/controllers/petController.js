@@ -170,7 +170,7 @@ const createItem = async (req, res) => {
       [
         shop_id,
         String(item_name).trim(),
-        String(category || 'Empty PET Bottle').trim(),
+        String(category || 'Packaged Water Bottle').trim(),
         String(size_label).trim(),
         String(unit_type || 'bottles').trim(),
         Number(cost_price || 0),
@@ -228,7 +228,7 @@ const updateItem = async (req, res) => {
         WHERE id = ? AND shop_id = ?`,
       [
         String(item_name).trim(),
-        String(category || 'Empty PET Bottle').trim(),
+        String(category || 'Packaged Water Bottle').trim(),
         String(size_label).trim(),
         String(unit_type || 'bottles').trim(),
         Number(cost_price || 0),
@@ -488,6 +488,36 @@ const createTransaction = async (req, res) => {
   }
 };
 
+const deleteTransaction = async (req, res) => {
+  try {
+    const { shop_id, type } = req.user;
+    if (type === 'staff') {
+      return res.status(403).json({ message: 'Only shop owner can delete sale or stock entries' });
+    }
+
+    await getShopOrThrow(shop_id);
+
+    const entry = await pGet(
+      `SELECT t.*, i.item_name, i.size_label
+         FROM inventory_transactions t
+         JOIN inventory_items i ON i.id = t.item_id AND i.shop_id = t.shop_id
+        WHERE t.id = ? AND t.shop_id = ?`,
+      [req.params.id, shop_id]
+    );
+    if (!entry) return res.status(404).json({ message: 'Entry not found' });
+
+    await pRun('DELETE FROM inventory_transactions WHERE id = ? AND shop_id = ?', [req.params.id, shop_id]);
+
+    res.json({
+      message: entry.txn_type === 'sale'
+        ? 'Sale invoice deleted. Stock, revenue, and customer balance have been recalculated.'
+        : 'Stock entry deleted. Product stock has been recalculated.',
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || 'Error deleting entry' });
+  }
+};
+
 const getSummary = async (req, res) => {
   try {
     const { shop_id } = req.user;
@@ -651,6 +681,7 @@ const getReports = async (req, res) => {
         unit_price: hideAmounts ? null : Number(row.unit_price || 0),
         paid_amount: hideAmounts ? null : Number(row.paid_amount || 0),
         total_amount: hideAmounts ? null : Number(row.quantity || 0) * Number(row.unit_price || 0),
+        outstanding_amount: hideAmounts ? null : Math.max(0, (Number(row.quantity || 0) * Number(row.unit_price || 0)) - Number(row.paid_amount || 0)),
       })),
       financials_hidden: hideAmounts,
     });
@@ -669,6 +700,7 @@ module.exports = {
   updateCustomer,
   getTransactions,
   createTransaction,
+  deleteTransaction,
   getSummary,
   getReports,
 };
