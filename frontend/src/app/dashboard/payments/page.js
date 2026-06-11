@@ -5,12 +5,17 @@ import { Plus, X, FileText, ChevronDown, ChevronUp, DollarSign } from 'lucide-re
 import jsPDF from 'jspdf'
 import CenterAlert from '../../../components/CenterAlert'
 import CenterDialog from '../../../components/CenterDialog'
+import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
+import { isHybridMode, isPetTradingMode } from '../../../lib/businessMode'
 
 export default function PaymentsPage() {
+  const { user } = useAuth()
   const [payments, setPayments] = useState([])
   const [customers, setCustomers] = useState([])
+  const [petCustomers, setPetCustomers] = useState([])
+  const [petPayments, setPetPayments] = useState([])
   const [outstandingData, setOutstandingData] = useState({ outstanding: [], advances: [] })
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -30,12 +35,20 @@ export default function PaymentsPage() {
   const [errorAlert, setErrorAlert] = useState('')
   const [successAlert, setSuccessAlert] = useState('')
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: '', onConfirm: null })
+  const hasPetPayments = isHybridMode(user) || isPetTradingMode(user)
+  const [paymentBusiness, setPaymentBusiness] = useState('water_19l')
 
   useEffect(() => {
     loadCustomers()
     loadPayments()
     loadOutstanding()
   }, [])
+
+  useEffect(() => {
+    if (!hasPetPayments) return
+    loadPetCustomers()
+    loadPetPayments()
+  }, [hasPetPayments])
 
   // When a customer is selected in modal, fetch accurate ledger summary (billed/paid/balance)
   useEffect(() => {
@@ -46,13 +59,15 @@ export default function PaymentsPage() {
     }
     ;(async () => {
       try {
-        const res = await axios.get(`${API_URL}/payments/customer/${cid}`)
+        const res = paymentBusiness === 'pet'
+          ? await axios.get(`${API_URL}/pet/customers/${cid}/ledger`)
+          : await axios.get(`${API_URL}/payments/customer/${cid}`)
         setSelectedSummary(res.data)
       } catch {
         setSelectedSummary(null)
       }
     })()
-  }, [form.customer_id])
+  }, [form.customer_id, paymentBusiness])
 
   const loadCustomers = async () => {
     try {
@@ -76,15 +91,48 @@ export default function PaymentsPage() {
     } catch (err) { console.error(err) }
   }
 
+  const loadPetCustomers = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/pet/customers`)
+      setPetCustomers(res.data.filter(c => c.is_active))
+    } catch (err) { console.error(err) }
+  }
+
+  const loadPetPayments = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/pet/payments`)
+      setPetPayments(res.data)
+    } catch (err) { console.error(err) }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.customer_id) return setErrorAlert('Please select a customer.')
+    const payAmount = Number(form.amount || 0)
+    if (!Number.isFinite(payAmount) || payAmount <= 0) return setErrorAlert('Payment amount must be greater than zero.')
+
+    if (paymentBusiness === 'pet') {
+      try {
+        await axios.post(`${API_URL}/pet/payments`, {
+          customer_id: form.customer_id,
+          amount: payAmount,
+          payment_date: form.payment_date,
+          notes: form.notes,
+        })
+        setShowModal(false)
+        setForm({ customer_id: '', amount: '', payment_date: new Date().toISOString().split('T')[0], payment_type: 'partial', notes: '' })
+        setCustomerSearch('')
+        await Promise.all([loadPetCustomers(), loadPetPayments()])
+        setSuccessAlert('Packaged bottle payment recorded successfully.')
+      } catch (err) {
+        setErrorAlert(getRequestErrorMessage(err, 'Unable to record packaged bottle payment.'))
+      }
+      return
+    }
 
     // Show current pending before payment
-    const customer = customers.find(c => c.id === parseInt(form.customer_id))
     const outstanding = outstandingData.outstanding.find(o => o.id === parseInt(form.customer_id))
     const pendingAmount = Number(outstanding?.outstanding || 0)
-    const payAmount = Number(form.amount || 0)
 
     if (form.payment_type === 'partial') {
       return setConfirmDialog({
@@ -137,25 +185,36 @@ export default function PaymentsPage() {
     return { type: 'clear', amount: 0, bottles: 0 }
   }
 
-  const filteredCustomers = customers.filter((c) => {
+  const activeCustomers = paymentBusiness === 'pet' ? petCustomers : customers
+  const filteredCustomers = activeCustomers.filter((c) => {
     const q = customerSearch.trim().toLowerCase()
     if (!q) return true
     return String(c.name || '').toLowerCase().includes(q) || String(c.phone || '').toLowerCase().includes(q)
   })
   const quickPickCustomers = filteredCustomers.slice(0, 8)
-  const selectedCustomer = customers.find(c => Number(c.id) === Number(form.customer_id))
+  const selectedCustomer = activeCustomers.find(c => Number(c.id) === Number(form.customer_id))
+  const petOutstanding = petCustomers.filter((c) => Number(c.outstanding_balance || 0) > 0)
+  const petAdvances = petCustomers.filter((c) => Number(c.advance_balance || 0) > 0)
+
+  const resetPaymentModal = (business = paymentBusiness) => {
+    setPaymentBusiness(business)
+    setForm({ customer_id: '', amount: '', payment_date: new Date().toISOString().split('T')[0], payment_type: 'partial', notes: '' })
+    setCustomerSearch('')
+    setSelectedSummary(null)
+    setShowModal(true)
+  }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Payments</h1>
-        <button onClick={() => { setShowModal(true); setCustomerSearch('') }} className="btn btn-primary">
+        <button onClick={() => resetPaymentModal(hasPetPayments && isPetTradingMode(user) ? 'pet' : 'water_19l')} className="btn btn-primary">
           <Plus size={20} /> Record Payment
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setActiveTab('outstanding')} className={`px-4 py-2 rounded-lg ${activeTab === 'outstanding' ? 'bg-primary text-white' : 'bg-white'}`}>
           Pending Payments ({outstandingData.outstanding.length})
         </button>
@@ -165,6 +224,19 @@ export default function PaymentsPage() {
         <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-lg ${activeTab === 'history' ? 'bg-primary text-white' : 'bg-white'}`}>
           Payment History
         </button>
+        {hasPetPayments && (
+          <>
+            <button onClick={() => setActiveTab('petOutstanding')} className={`px-4 py-2 rounded-lg ${activeTab === 'petOutstanding' ? 'bg-primary text-white' : 'bg-white'}`}>
+              Packaged Pending ({petOutstanding.length})
+            </button>
+            <button onClick={() => setActiveTab('petAdvances')} className={`px-4 py-2 rounded-lg ${activeTab === 'petAdvances' ? 'bg-primary text-white' : 'bg-white'}`}>
+              Packaged Advance ({petAdvances.length})
+            </button>
+            <button onClick={() => setActiveTab('petHistory')} className={`px-4 py-2 rounded-lg ${activeTab === 'petHistory' ? 'bg-primary text-white' : 'bg-white'}`}>
+              Packaged History
+            </button>
+          </>
+        )}
       </div>
 
       {/* Outstanding Tab */}
@@ -280,6 +352,101 @@ export default function PaymentsPage() {
         </div>
       )}
 
+      {hasPetPayments && activeTab === 'petOutstanding' && (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th>Type</th>
+                  <th>Bottles Sold</th>
+                  <th>Pending Amount</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {petOutstanding.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-8 text-gray-400">No packaged bottle pending payments</td></tr>
+                ) : petOutstanding.map(c => (
+                  <tr key={c.id}>
+                    <td className="font-medium">{c.name}</td>
+                    <td>{c.phone || '-'}</td>
+                    <td>{c.customer_type || '-'}</td>
+                    <td>{Number(c.purchased_qty || 0).toLocaleString()}</td>
+                    <td className="font-bold text-red-600">Rs {Number(c.outstanding_balance || 0).toLocaleString()}</td>
+                    <td>
+                      <button onClick={() => { resetPaymentModal('pet'); setForm(prev => ({ ...prev, customer_id: c.id })); setCustomerSearch(`${c.name} - ${c.phone || 'No phone'}`) }} className="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded hover:bg-blue-200">Pay</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {hasPetPayments && activeTab === 'petAdvances' && (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th>Type</th>
+                  <th>Total Paid</th>
+                  <th>Advance Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {petAdvances.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-8 text-gray-400">No packaged bottle advance payments</td></tr>
+                ) : petAdvances.map(c => (
+                  <tr key={c.id}>
+                    <td className="font-medium">{c.name}</td>
+                    <td>{c.phone || '-'}</td>
+                    <td>{c.customer_type || '-'}</td>
+                    <td className="font-bold text-green-600">Rs {Number(c.total_paid || 0).toLocaleString()}</td>
+                    <td className="font-bold text-green-600">Rs {Number(c.advance_balance || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {hasPetPayments && activeTab === 'petHistory' && (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {petPayments.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center py-8 text-gray-400">No packaged bottle payments found</td></tr>
+                ) : petPayments.map(p => (
+                  <tr key={p.id}>
+                    <td>{p.payment_date}</td>
+                    <td>{p.customer_name}</td>
+                    <td className="font-bold text-green-600">Rs {Number(p.amount || 0).toLocaleString()}</td>
+                    <td>{p.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Ledger Modal */}
       {showLedger && ledgerData && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
@@ -334,6 +501,27 @@ export default function PaymentsPage() {
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
             </div>
             <form onSubmit={handleSubmit} className="flex-1 p-4 sm:p-6 space-y-4 overflow-y-auto">
+              {hasPetPayments && !isPetTradingMode(user) && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Customer Type</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => resetPaymentModal('water_19l')}
+                      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${paymentBusiness === 'water_19l' ? 'border-primary bg-primary text-white' : 'border-gray-200 bg-white text-gray-700'}`}
+                    >
+                      19L Delivery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => resetPaymentModal('pet')}
+                      className={`rounded-lg border px-3 py-2 text-sm font-semibold ${paymentBusiness === 'pet' ? 'border-primary bg-primary text-white' : 'border-gray-200 bg-white text-gray-700'}`}
+                    >
+                      Packaged Bottles
+                    </button>
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1">Customer *</label>
                 <input
@@ -358,11 +546,16 @@ export default function PaymentsPage() {
                     )
                   ) : (
                     quickPickCustomers.map(c => {
-                      const balance = getCustomerWithBalance(c.id)
+                      const balance = paymentBusiness === 'pet'
+                        ? {
+                            type: Number(c.outstanding_balance || 0) > 0 ? 'pending' : Number(c.advance_balance || 0) > 0 ? 'advance' : 'clear',
+                            amount: Number(c.outstanding_balance || 0) > 0 ? Number(c.outstanding_balance || 0) : Number(c.advance_balance || 0),
+                          }
+                        : getCustomerWithBalance(c.id)
                       const balanceText = balance.type === 'pending'
-                        ? `Pending Rs ${balance.amount.toLocaleString()}`
+                        ? `Pending Rs ${Number(balance.amount || 0).toLocaleString()}`
                         : balance.type === 'advance'
-                          ? `Advance Rs ${balance.amount.toLocaleString()}`
+                          ? `Advance Rs ${Number(balance.amount || 0).toLocaleString()}`
                           : 'Clear'
                       return (
                         <button

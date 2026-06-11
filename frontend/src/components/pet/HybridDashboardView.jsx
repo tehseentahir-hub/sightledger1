@@ -101,6 +101,11 @@ export default function HybridDashboardView({ user }) {
   const today = new Date()
   const daysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24))) : 0
   const expiryLabel = expiryDate ? expiryDate.toLocaleDateString('en-GB') : 'N/A'
+  const combinedTodayCash = Number(waterData?.today_collection || 0) + Number(petData?.today_cash_collected || 0)
+  const combinedPending = Number(waterData?.pending_payments || 0) + Number(petData?.total_outstanding || 0)
+  const combinedAdvance = Number(waterData?.advance_balance || 0) + Number(petData?.total_advance || 0)
+  const combinedMonthBilled = Number(waterData?.monthly_sales || 0) + Number(petData?.month_sales_amount || 0)
+  const combinedMonthCollected = Number(waterData?.month_collection || 0) + Number(petData?.month_cash_collected || 0)
 
   if (loading) {
     return (
@@ -143,7 +148,7 @@ export default function HybridDashboardView({ user }) {
         <MetricCard label="19L deliveries today" value={number(waterData?.today_deliveries)} sub={`${number(waterData?.today_bottles)} bottles`} icon={Truck} tone="blue" href="/dashboard/deliveries" />
         <MetricCard label="Packaged bottles sold today" value={number(petData?.today_sales_qty)} sub={`${number(petData?.current_stock)} empty bottles in stock`} icon={ShoppingCart} tone="green" href="/dashboard/stock" />
         {showFinancials ? (
-          <MetricCard label="This month revenue" value={currency(Number(waterData?.monthly_sales || 0) + Number(petData?.month_sales_amount || 0))} sub={`19L ${currency(waterData?.monthly_sales)} | PET ${currency(petData?.month_sales_amount)}`} icon={Wallet} tone="purple" />
+          <MetricCard label="This month billed" value={currency(combinedMonthBilled)} sub={`19L ${currency(waterData?.monthly_sales)} | Packaged ${currency(petData?.month_sales_amount)}`} icon={Wallet} tone="purple" />
         ) : (
           <MetricCard label="This month activity" value={`${number(waterData?.month_bottles)} + ${number(petData?.month_sales_qty)}`} sub="19L bottles + packaged bottles" icon={Package} tone="purple" />
         )}
@@ -154,15 +159,18 @@ export default function HybridDashboardView({ user }) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Today Cash Collection</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">{currency(waterData?.today_collection)}</p>
+            <p className="mt-1 text-2xl font-bold text-green-600">{currency(combinedTodayCash)}</p>
+            <p className="mt-1 text-xs text-gray-400">19L {currency(waterData?.today_collection)} | Packaged {currency(petData?.today_cash_collected)}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Pending Payments</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">{currency(waterData?.pending_payments)}</p>
+            <p className="mt-1 text-2xl font-bold text-red-600">{currency(combinedPending)}</p>
+            <p className="mt-1 text-xs text-gray-400">19L {currency(waterData?.pending_payments)} | Packaged {currency(petData?.total_outstanding)}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Packaged Bottle Month Sales</p>
-            <p className="mt-1 text-2xl font-bold text-primary">{currency(petData?.month_sales_amount)}</p>
+            <p className="text-sm text-gray-500">This Month Collected</p>
+            <p className="mt-1 text-2xl font-bold text-primary">{currency(combinedMonthCollected)}</p>
+            <p className="mt-1 text-xs text-gray-400">Advance balance: {currency(combinedAdvance)}</p>
           </div>
         </div>
       )}

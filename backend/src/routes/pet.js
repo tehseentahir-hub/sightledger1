@@ -9,9 +9,12 @@ const {
   getCustomers,
   createCustomer,
   updateCustomer,
+  getCustomerLedger,
   getTransactions,
   createTransaction,
   deleteTransaction,
+  getPayments,
+  createPayment,
   getSummary,
   getReports,
 } = require('../controllers/petController');
@@ -28,7 +31,11 @@ router.delete('/items/:id', deleteItem);
 
 router.get('/customers', getCustomers);
 router.post('/customers', createCustomer);
+router.get('/customers/:id/ledger', getCustomerLedger);
 router.put('/customers/:id', updateCustomer);
+
+router.get('/payments', getPayments);
+router.post('/payments', createPayment);
 
 router.get('/transactions', getTransactions);
 router.post('/transactions', createTransaction);

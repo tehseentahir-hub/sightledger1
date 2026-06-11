@@ -202,6 +202,20 @@ function initializeDatabase() {
       FOREIGN KEY(customer_id) REFERENCES pet_customers(id)
     )`);
 
+    db.run(`CREATE TABLE IF NOT EXISTS pet_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      shop_id INTEGER NOT NULL,
+      customer_id INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      payment_date TEXT NOT NULL,
+      notes TEXT,
+      created_by INTEGER,
+      created_by_role TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(shop_id) REFERENCES shops(id),
+      FOREIGN KEY(customer_id) REFERENCES pet_customers(id)
+    )`);
+
     db.run(`ALTER TABLE inventory_transactions ADD COLUMN customer_id INTEGER`, (err) => {});
     db.run(`ALTER TABLE inventory_transactions ADD COLUMN invoice_number TEXT`, (err) => {});
     db.run(`ALTER TABLE inventory_transactions ADD COLUMN payment_type TEXT DEFAULT 'cash'`, (err) => {});

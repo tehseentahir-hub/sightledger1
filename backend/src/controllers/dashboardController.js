@@ -73,7 +73,7 @@ const getDashboard = async (req, res) => {
     // Walk-in deliveries are identified only by delivery_type to avoid real customer ID collisions.
     // We'll track BOTH the count AND the bottles refilled for walk-ins
 
-    const [todayDeliveries, todayStats, last7Stats, monthStats, activeCustomers, pendingPayments, advanceBalance, todayCollection, todayWalkinCash, bottlesOutstanding, monthlySales, recentDeliveries, walkinTrendRows] =
+    const [todayDeliveries, todayStats, last7Stats, monthStats, activeCustomers, pendingPayments, advanceBalance, todayCollection, todayWalkinCash, monthCollection, monthWalkinCash, bottlesOutstanding, monthlySales, recentDeliveries, walkinTrendRows] =
       await Promise.all([
         pGet(
           'SELECT COUNT(*) as count, COALESCE(SUM(bottles_delivered), 0) as bottles FROM deliveries WHERE shop_id = ? AND delivery_date = ?',
@@ -172,6 +172,16 @@ const getDashboard = async (req, res) => {
             WHERE shop_id = ? AND delivery_date = ? AND (delivery_type = 'walk_in')`,
           [shop_id, today]
         ),
+        pGet(
+          'SELECT COALESCE(SUM(amount), 0) as month_collection FROM payments WHERE shop_id = ? AND payment_date BETWEEN ? AND ?',
+          [shop_id, monthStart, today]
+        ),
+        pGet(
+          `SELECT COALESCE(SUM(bottles_delivered * COALESCE(walkin_rate_per_bottle, 0)), 0) as walkin_cash
+             FROM deliveries
+            WHERE shop_id = ? AND delivery_date BETWEEN ? AND ? AND (delivery_type = 'walk_in')`,
+          [shop_id, monthStart, today]
+        ),
         pGet(BOTTLES_OUTSIDE_TOTAL_SQL, [shop_id]),
         pGet(
           `SELECT COALESCE(SUM(
@@ -244,6 +254,7 @@ const getDashboard = async (req, res) => {
       pending_payments: hideFinancials ? null : pendingPayments?.pending || 0,
       advance_balance: hideFinancials ? null : advanceBalance?.advance || 0,
       today_collection: hideFinancials ? null : Number(todayCollection?.today_collection || 0) + Number(todayWalkinCash?.walkin_cash || 0),
+      month_collection: hideFinancials ? null : Number(monthCollection?.month_collection || 0) + Number(monthWalkinCash?.walkin_cash || 0),
       bottles_outside: bottlesOutstanding?.outstanding || 0,
       monthly_sales: hideFinancials ? null : monthlySales?.sales || 0,
       last7_deliveries: last7Stats?.count || 0,

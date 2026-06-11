@@ -8,22 +8,32 @@ import { useAuth } from '../../../context/AuthContext'
 import CenterAlert from '../../../components/CenterAlert'
 
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
+import { isHybridMode, isPetTradingMode } from '../../../lib/businessMode'
 
 export default function InvoicePage() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState([])
+  const [petCustomers, setPetCustomers] = useState([])
   const [shopProfile, setShopProfile] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
+  const [invoiceBusiness, setInvoiceBusiness] = useState('water_19l')
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(false)
   const [errorAlert, setErrorAlert] = useState('')
+  const hasPetInvoices = isHybridMode(user) || isPetTradingMode(user)
 
   useEffect(() => {
     loadCustomers()
     loadShopProfile()
   }, [])
+
+  useEffect(() => {
+    if (!hasPetInvoices) return
+    loadPetCustomers()
+    if (isPetTradingMode(user)) setInvoiceBusiness('pet')
+  }, [hasPetInvoices, user?.business_mode])
 
   const loadCustomers = async () => {
     try {
@@ -42,8 +52,18 @@ export default function InvoicePage() {
     }
   }
 
+  const loadPetCustomers = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/pet/customers`)
+      setPetCustomers(res.data)
+    } catch (err) { console.error(err) }
+  }
+
   const generateInvoice = async () => {
     if (!selectedCustomer) return setErrorAlert('Please select a customer first.')
+    if (invoiceBusiness === 'pet') {
+      return generatePetInvoice()
+    }
 
     setLoading(true)
     try {
@@ -171,6 +191,111 @@ export default function InvoicePage() {
     setLoading(false)
   }
 
+  const generatePetInvoice = async () => {
+    if (!selectedCustomer) return setErrorAlert('Please select a packaged bottle customer first.')
+
+    setLoading(true)
+    try {
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`
+
+      const [salesRes, ledgerRes] = await Promise.all([
+        axios.get(`${API_URL}/pet/transactions`, {
+          params: { customer_id: selectedCustomer, txn_type: 'sale', start_date: startDate, end_date: endDate }
+        }),
+        axios.get(`${API_URL}/pet/customers/${selectedCustomer}/ledger`)
+      ])
+
+      const sales = salesRes.data || []
+      const customer = petCustomers.find(c => Number(c.id) === Number(selectedCustomer)) || ledgerRes.data?.customer
+      if (!sales.length) {
+        setErrorAlert('No packaged bottle sales found for this selected month.')
+        setLoading(false)
+        return
+      }
+
+      const doc = new jsPDF()
+      const pageHeight = doc.internal.pageSize.height
+      const pageWidth = doc.internal.pageSize.width
+      const shopName = (shopProfile?.shop_name || user?.shop_name || 'Water Shop').trim()
+      const monthName = new Date(0, month - 1).toLocaleString('en', { month: 'long' })
+
+      doc.setFontSize(20)
+      doc.setTextColor(15, 23, 42)
+      doc.text(shopName, pageWidth / 2, 20, { align: 'center' })
+      doc.setFontSize(12)
+      doc.setTextColor(71, 85, 105)
+      doc.text('Packaged Bottle Monthly Statement', pageWidth / 2, 29, { align: 'center' })
+      doc.text(`${monthName} ${year}`, pageWidth / 2, 36, { align: 'center' })
+
+      doc.setFontSize(11)
+      doc.setTextColor(20, 20, 20)
+      doc.text(`Invoice Date: ${new Date().toLocaleDateString()}`, 20, 50)
+      doc.text(`Customer: ${customer?.name || 'Customer'}`, 20, 58)
+      doc.text(`Phone: ${customer?.phone || 'N/A'}`, 20, 66)
+      doc.text(`Type: ${customer?.customer_type || 'N/A'}`, 20, 74)
+
+      const rows = sales.map((sale) => {
+        const total = Number(sale.total_amount ?? (Number(sale.quantity || 0) * Number(sale.unit_price || 0)))
+        return [
+          sale.txn_date,
+          sale.invoice_number || `PET-${sale.id}`,
+          `${sale.item_name || '-'} ${sale.size_label || ''}`.trim(),
+          Number(sale.quantity || 0).toLocaleString(),
+          `Rs ${Number(sale.unit_price || 0).toLocaleString()}`,
+          `Rs ${total.toLocaleString()}`,
+          `Rs ${Number(sale.paid_amount || 0).toLocaleString()}`,
+        ]
+      })
+
+      autoTable(doc, {
+        startY: 86,
+        head: [['Date', 'Invoice', 'Product', 'Qty', 'Unit Price', 'Total', 'Paid']],
+        body: rows,
+        theme: 'grid',
+        headStyles: { fillColor: [14, 165, 233] },
+        styles: { fontSize: 9 },
+      })
+
+      const totalBilled = sales.reduce((sum, sale) => sum + Number(sale.total_amount ?? (Number(sale.quantity || 0) * Number(sale.unit_price || 0))), 0)
+      const paidInSales = sales.reduce((sum, sale) => sum + Number(sale.paid_amount || 0), 0)
+      const periodPayments = (ledgerRes.data?.ledger || [])
+        .filter(row => row.type === 'payment' && row.date >= startDate && row.date <= endDate)
+        .reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      const paidThisPeriod = paidInSales + periodPayments
+      const currentBalance = Number(ledgerRes.data?.current_balance || 0)
+      const finalY = doc.lastAutoTable.finalY + 10
+
+      doc.setFontSize(12)
+      doc.setTextColor(20, 20, 20)
+      doc.text(`Total Billed This Period: Rs ${totalBilled.toLocaleString()}`, 20, finalY)
+      doc.text(`Paid This Period: Rs ${paidThisPeriod.toLocaleString()}`, 20, finalY + 8)
+      doc.text(`Remaining This Period: Rs ${Math.max(0, totalBilled - paidThisPeriod).toLocaleString()}`, 20, finalY + 16)
+      doc.text(
+        currentBalance >= 0
+          ? `Current Account Balance: Rs ${currentBalance.toLocaleString()} pending`
+          : `Current Account Balance: Rs ${Math.abs(currentBalance).toLocaleString()} advance`,
+        20,
+        finalY + 24
+      )
+
+      doc.setTextColor(120, 120, 120)
+      doc.setFontSize(9)
+      doc.text('sightledger.com', pageWidth / 2, pageHeight - 16, { align: 'center' })
+      doc.setFontSize(10)
+      doc.text('Powered by Sight Ledger', pageWidth / 2, pageHeight - 11, { align: 'center' })
+      doc.setFontSize(8.5)
+      doc.text('Solution for water business operations and billing', pageWidth / 2, pageHeight - 6, { align: 'center' })
+
+      doc.save(`packaged_invoice_${customer?.name || 'customer'}_${monthName}_${year}.pdf`)
+    } catch (err) {
+      console.error(err)
+      setErrorAlert(getRequestErrorMessage(err, 'Unable to generate packaged bottle invoice right now.'))
+    }
+    setLoading(false)
+  }
+
   const months = [
     { value: 1, label: 'January' },
     { value: 2, label: 'February' },
@@ -185,9 +310,10 @@ export default function InvoicePage() {
     { value: 11, label: 'November' },
     { value: 12, label: 'December' }
   ]
-  const selectedCustomerRecord = customers.find(c => Number(c.id) === Number(selectedCustomer))
+  const activeCustomers = invoiceBusiness === 'pet' ? petCustomers : customers
+  const selectedCustomerRecord = activeCustomers.find(c => Number(c.id) === Number(selectedCustomer))
   const customerQuery = customerSearch.trim().toLowerCase()
-  const filteredCustomers = customers
+  const filteredCustomers = activeCustomers
     .filter(c => {
       if (!customerQuery) return true
       return (
@@ -198,11 +324,37 @@ export default function InvoicePage() {
     })
     .slice(0, 12)
 
+  const switchInvoiceBusiness = (business) => {
+    setInvoiceBusiness(business)
+    setSelectedCustomer('')
+    setCustomerSearch('')
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Generate Invoice</h1>
 
       <div className="card p-6 mb-6">
+        {hasPetInvoices && !isPetTradingMode(user) && (
+          <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => switchInvoiceBusiness('water_19l')}
+              className={`rounded-xl border px-4 py-3 text-left font-semibold ${invoiceBusiness === 'water_19l' ? 'border-primary bg-primary text-white' : 'border-gray-200 bg-white text-gray-700'}`}
+            >
+              19L Delivery Invoice
+              <span className={`block text-xs font-normal ${invoiceBusiness === 'water_19l' ? 'text-white/80' : 'text-gray-500'}`}>Monthly delivery billing by customer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchInvoiceBusiness('pet')}
+              className={`rounded-xl border px-4 py-3 text-left font-semibold ${invoiceBusiness === 'pet' ? 'border-primary bg-primary text-white' : 'border-gray-200 bg-white text-gray-700'}`}
+            >
+              Packaged Bottle Invoice
+              <span className={`block text-xs font-normal ${invoiceBusiness === 'pet' ? 'text-white/80' : 'text-gray-500'}`}>Product sales statement by customer</span>
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-3">
             <label className="block text-sm font-medium mb-2">Search Customer</label>
@@ -233,7 +385,11 @@ export default function InvoicePage() {
                   className={`w-full text-left px-3 py-3 text-sm hover:bg-blue-50 ${Number(selectedCustomer) === Number(c.id) ? 'bg-blue-50' : ''}`}
                 >
                   <span className="font-medium">{c.name}</span>
-                  <span className="text-gray-500"> - {c.phone || 'No phone'} - {c.payment_type} - Rs {c.rate_per_bottle}/bottle</span>
+                  {invoiceBusiness === 'pet' ? (
+                    <span className="text-gray-500"> - {c.phone || 'No phone'} - {c.customer_type || 'Customer'} - Pending Rs {Number(c.outstanding_balance || 0).toLocaleString()}</span>
+                  ) : (
+                    <span className="text-gray-500"> - {c.phone || 'No phone'} - {c.payment_type} - Rs {c.rate_per_bottle}/bottle</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -295,9 +451,10 @@ export default function InvoicePage() {
         <ul className="text-gray-600 space-y-2 text-sm">
           <li>1. Search customer by name, phone, or address</li>
           <li>2. Choose the month and year for the invoice</li>
-          <li>3. Click "Generate PDF Invoice" button</li>
-          <li>4. The invoice will be downloaded as a PDF file</li>
-          <li>5. You can print or share the invoice</li>
+          <li>3. Choose 19L Delivery or Packaged Bottle invoice if this is a hybrid account</li>
+          <li>4. Click "Generate PDF Invoice" button</li>
+          <li>5. The invoice will be downloaded as a PDF file</li>
+          <li>6. You can print or share the invoice</li>
         </ul>
       </div>
       <CenterAlert open={!!errorAlert} title="Invoice Error" message={errorAlert} onClose={() => setErrorAlert('')} />

@@ -150,6 +150,7 @@ export default function ReportsPage() {
     { value: 'bottles', label: 'Bottles', desc: 'Inventory circulation', icon: Package },
   ]
   const reports = [
+    ...(hybridMode && !restrictedHybridCashier ? [{ value: 'overview', label: 'Overview', desc: 'Combined business view', icon: BarChart3 }] : []),
     ...(restrictedHybridCashier ? baseReports.filter((item) => ['daily', 'bottles'].includes(item.value)) : baseReports),
     ...(hybridMode ? [{ value: 'pet', label: 'PET', desc: 'PET stock and sales', icon: Package }] : []),
   ]
@@ -160,6 +161,12 @@ export default function ReportsPage() {
       setActiveReport('daily')
     }
   }, [restrictedHybridCashier, activeReport])
+
+  useEffect(() => {
+    if (hybridMode && !restrictedHybridCashier && activeReport === 'monthly') {
+      setActiveReport('overview')
+    }
+  }, [hybridMode, restrictedHybridCashier, activeReport])
 
   useEffect(() => {
     if (petMode || (hybridMode && activeReport === 'pet')) return
@@ -182,7 +189,14 @@ export default function ReportsPage() {
     setLoading(true)
     setError('')
     try {
-      if (activeReport === 'outstanding') {
+      if (activeReport === 'overview') {
+        const [waterDash, petSummary, petReport] = await Promise.all([
+          axios.get(`${API_URL}/dashboard`),
+          axios.get(`${API_URL}/pet/summary`),
+          axios.get(`${API_URL}/pet/reports`, { params: monthRange() }),
+        ])
+        setReport({ water: waterDash.data || {}, pet: petSummary.data || {}, petReport: petReport.data || {} })
+      } else if (activeReport === 'outstanding') {
         const res = await axios.get(`${API_URL}/payments/outstanding`)
         setReport(res.data)
       } else if (activeReport === 'customers') {
@@ -321,7 +335,7 @@ export default function ReportsPage() {
             {active?.label}
           </div>
 
-          {(activeReport === 'monthly' || activeReport === 'profit') ? (
+          {(activeReport === 'monthly' || activeReport === 'profit' || activeReport === 'overview') ? (
             <>
               <select value={filter.month} onChange={(e) => setFilter({ ...filter, month: Number(e.target.value) })} className="input w-full sm:w-40">
                 {Array.from({ length: 12 }, (_, index) => (
@@ -389,6 +403,86 @@ export default function ReportsPage() {
             ['walkin_bottles', 'Walk-in'],
             ['total_sales', 'Sales', currency],
           ]} />
+        </div>
+      )}
+
+      {!loading && !error && activeReport === 'overview' && report && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <StatCard
+              label="This Month Billed"
+              value={currency(Number(report.water?.monthly_sales || 0) + Number(report.pet?.month_sales_amount || 0))}
+              tone="green"
+              icon={TrendingUp}
+              sub={`19L ${currency(report.water?.monthly_sales)} | Packaged ${currency(report.pet?.month_sales_amount)}`}
+            />
+            <StatCard
+              label="Cash Collected"
+              value={currency(Number(report.water?.month_collection || 0) + Number(report.pet?.month_cash_collected || 0))}
+              tone="blue"
+              icon={WalletCards}
+              sub={`Today ${currency(Number(report.water?.today_collection || 0) + Number(report.pet?.today_cash_collected || 0))}`}
+            />
+            <StatCard
+              label="Pending Payments"
+              value={currency(Number(report.water?.pending_payments || 0) + Number(report.pet?.total_outstanding || 0))}
+              tone="red"
+              icon={AlertCircle}
+              sub={`19L ${currency(report.water?.pending_payments)} | Packaged ${currency(report.pet?.total_outstanding)}`}
+            />
+            <StatCard
+              label="Bottles Activity"
+              value={`${number(report.water?.month_bottles)} + ${number(report.pet?.month_sales_qty)}`}
+              tone="amber"
+              icon={Package}
+              sub="19L delivered + packaged sold"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="card p-5">
+              <h2 className="mb-4 font-semibold">19L Delivery Snapshot</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <MiniMetric label="Today Deliveries" value={report.water?.today_deliveries} />
+                <MiniMetric label="Today Bottles" value={report.water?.today_bottles} />
+                <MiniMetric label="Walk-in This Month" value={report.water?.month_walkins} />
+                <MiniMetric label="Bottles Outside" value={report.water?.bottles_outside} />
+              </div>
+            </div>
+            <div className="card p-5">
+              <h2 className="mb-4 font-semibold">Packaged Bottle Snapshot</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <MiniMetric label="Products" value={report.pet?.total_products} />
+                <MiniMetric label="Stock" value={report.pet?.current_stock} />
+                <MiniMetric label="Sold Today" value={report.pet?.today_sales_qty} />
+                <MiniMetric label="Low Stock" value={report.pet?.low_stock_count} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="card p-5">
+              <h2 className="mb-4 font-semibold">Packaged Revenue by Product</h2>
+              <ReportTable rows={report.petReport?.product_summary || []} columns={[
+                ['item_name', 'Product'],
+                ['size_label', 'Size'],
+                ['sold_qty', 'Sold'],
+                ['sold_amount', 'Billed', currency],
+                ['current_stock', 'Stock'],
+              ]} emptyMessage="No packaged product sales found for this month." />
+            </div>
+            <div className="card p-5">
+              <h2 className="mb-4 font-semibold">Packaged Customer Balances</h2>
+              <ReportTable rows={(report.petReport?.customer_summary || []).filter((row) => Number(row.outstanding_balance || 0) > 0)} columns={[
+                ['name', 'Customer'],
+                ['customer_type', 'Type'],
+                ['purchased_qty', 'Bottles'],
+                ['purchased_amount', 'Billed', currency],
+                ['paid_amount', 'Paid', currency],
+                ['outstanding_balance', 'Pending', currency],
+              ]} emptyMessage="No packaged customer payments are pending." />
+            </div>
+          </div>
         </div>
       )}
 
