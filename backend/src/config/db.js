@@ -130,11 +130,18 @@ function initializeDatabase() {
       shop_id INTEGER NOT NULL,
       expense_type TEXT NOT NULL,
       amount REAL NOT NULL,
+      paid_amount REAL,
+      supplier_name TEXT,
+      supplier_phone TEXT,
       description TEXT,
       expense_date TEXT NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(shop_id) REFERENCES shops(id)
     )`);
+
+    db.run(`ALTER TABLE expenses ADD COLUMN paid_amount REAL`, (err) => {});
+    db.run(`ALTER TABLE expenses ADD COLUMN supplier_name TEXT`, (err) => {});
+    db.run(`ALTER TABLE expenses ADD COLUMN supplier_phone TEXT`, (err) => {});
 
 
     // Staff Table

@@ -234,6 +234,12 @@ export default function CustomersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Bottle Type</label>
                   <select value={form.bottle_type} onChange={e => setForm({...form, bottle_type: e.target.value})} className="input">
+                    <option>250ml</option>
+                    <option>350ml</option>
+                    <option>500ml</option>
+                    <option>1000ml</option>
+                    <option>1500ml</option>
+                    <option>6 Liter</option>
                     <option>19 Liter</option>
                     <option>10 Liter</option>
                     <option>5 Liter</option>

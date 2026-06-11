@@ -452,14 +452,27 @@ const getReports = async (req, res) => {
       );
 
       const expenses = await pGet(
-        `SELECT COALESCE(SUM(amount), 0) as expenses
+        `SELECT COALESCE(SUM(amount), 0) as expenses,
+                COALESCE(SUM(COALESCE(paid_amount, amount)), 0) as expense_paid,
+                COALESCE(SUM(CASE
+                  WHEN amount - COALESCE(paid_amount, amount) > 0
+                  THEN amount - COALESCE(paid_amount, amount)
+                  ELSE 0
+                END), 0) as supplier_payables
            FROM expenses
           WHERE shop_id = ? AND expense_date BETWEEN ? AND ?`,
         [shop_id, start_date, end_date]
       );
 
       const expenseBreakdown = await pAll(
-        `SELECT expense_type, COALESCE(SUM(amount), 0) as total
+        `SELECT expense_type,
+                COALESCE(SUM(amount), 0) as total,
+                COALESCE(SUM(COALESCE(paid_amount, amount)), 0) as paid,
+                COALESCE(SUM(CASE
+                  WHEN amount - COALESCE(paid_amount, amount) > 0
+                  THEN amount - COALESCE(paid_amount, amount)
+                  ELSE 0
+                END), 0) as outstanding
          FROM expenses
          WHERE shop_id = ? AND expense_date BETWEEN ? AND ?
          GROUP BY expense_type
@@ -497,6 +510,8 @@ const getReports = async (req, res) => {
       return res.json({
         income: income?.income || 0,
         expenses: expenses?.expenses || 0,
+        expense_paid: expenses?.expense_paid || 0,
+        supplier_payables: expenses?.supplier_payables || 0,
         profit,
         income_breakdown: incomeBreakdown || { walkin_income: 0, home_income: 0 },
         expense_breakdown: expenseBreakdown || [],

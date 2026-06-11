@@ -488,9 +488,11 @@ export default function ReportsPage() {
 
       {!loading && !error && activeReport === 'profit' && report && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
             <StatCard label="Income" value={currency(report.income)} tone="green" icon={ArrowUpRight} sub={`Home ${currency(report.income_breakdown?.home_income)} | Walk-in ${currency(report.income_breakdown?.walkin_income)}`} />
-            <StatCard label="Expenses" value={currency(report.expenses)} tone="red" icon={ArrowDownRight} />
+            <StatCard label="Expense Bills" value={currency(report.expenses)} tone="red" icon={ArrowDownRight} />
+            <StatCard label="Expense Paid" value={currency(report.expense_paid)} tone="green" icon={WalletCards} />
+            <StatCard label="Supplier Payables" value={currency(report.supplier_payables)} tone="amber" icon={AlertCircle} />
             <StatCard label="Net Profit" value={currency(report.profit)} tone={Number(report.profit || 0) >= 0 ? 'blue' : 'amber'} icon={WalletCards} />
           </div>
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -502,7 +504,9 @@ export default function ReportsPage() {
               <h2 className="mb-4 font-semibold">Expense Breakdown</h2>
               <ReportTable rows={report.expense_breakdown || []} columns={[
                 ['expense_type', 'Type'],
-                ['total', 'Amount', currency],
+                ['total', 'Total Bill', currency],
+                ['paid', 'Paid', currency],
+                ['outstanding', 'Balance', currency],
           ]} emptyMessage="No expenses were recorded for this month." />
             </div>
           </div>
