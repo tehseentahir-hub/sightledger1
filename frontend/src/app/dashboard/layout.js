@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!mounted) return
     if (!user) {
-      router.replace('/')
+      router.replace('/login?role=shop_owner')
       return
     }
     if (user.role === 'super_admin') {
@@ -110,7 +110,7 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = () => {
     logout()
-    router.replace('/')
+    router.replace('/login?role=shop_owner')
   }
 
   return (
@@ -124,9 +124,9 @@ export default function DashboardLayout({ children }) {
       </button>
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-40 h-[100dvh] w-64 bg-white border-r transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform`}>
         <div className="h-full flex flex-col">
-          <div className="p-6 border-b">
+          <div className="flex-none p-6 border-b">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Droplets className="w-5 h-5 text-white" />
@@ -136,7 +136,7 @@ export default function DashboardLayout({ children }) {
             <p className="text-xs text-gray-500 mt-1 truncate">{user?.shop_name}</p>
           </div>
 
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="min-h-0 flex-1 overflow-y-auto p-4 space-y-1">
             {visibleMenuItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -157,7 +157,7 @@ export default function DashboardLayout({ children }) {
             })}
           </nav>
 
-          <div className="p-4 border-t">
+          <div className="flex-none p-4 border-t bg-white">
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg"
