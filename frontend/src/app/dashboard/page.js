@@ -5,7 +5,8 @@ import { Users, Truck, DollarSign, Package, Calendar, Droplets, Wallet } from 'l
 import { useAuth } from '../../context/AuthContext'
 
 import { API_URL } from '../../lib/api'
-import { isPetTradingMode } from '../../lib/businessMode'
+import { isHybridMode, isPetTradingMode } from '../../lib/businessMode'
+import HybridDashboardView from '../../components/pet/HybridDashboardView'
 import PetDashboardView from '../../components/pet/PetDashboardView'
 
 function MiniChart({ data = [], valueKey = 'bottles', color = '#16a34a' }) {
@@ -37,6 +38,7 @@ export default function Dashboard() {
   const { user } = useAuth()
   const activeShop = shopInfo || user || null
   const petMode = isPetTradingMode(activeShop)
+  const hybridMode = isHybridMode(activeShop)
 
   useEffect(() => {
     loadShopInfo()
@@ -47,12 +49,12 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    if (petMode) {
+    if (petMode || hybridMode) {
       setLoading(false)
       return
     }
     loadDashboard()
-  }, [petMode])
+  }, [hybridMode, petMode])
 
   const loadDashboard = async () => {
     try {
@@ -93,6 +95,10 @@ export default function Dashboard() {
   const isExpired = Boolean(expiryDate && rawDaysLeft < 0)
   const packageName = normalizePlanName(activeShop?.subscription_type)
   const expiryLabel = expiryDate ? new Date(activeShop.subscription_expiry).toLocaleDateString('en-GB') : 'N/A'
+
+  if (hybridMode) {
+    return <HybridDashboardView user={activeShop} />
+  }
 
   if (petMode) {
     return <PetDashboardView user={activeShop} />

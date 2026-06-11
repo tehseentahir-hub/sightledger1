@@ -5,6 +5,24 @@ import { ClipboardList, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { API_URL } from '../../../lib/api'
 
+const formatPakistanTime = (value) => {
+  if (!value) return '-'
+
+  const text = String(value)
+  const date = new Date(text.includes('T') ? text : `${text.replace(' ', 'T')}Z`)
+  if (Number.isNaN(date.getTime())) return text
+
+  return new Intl.DateTimeFormat('en-PK', {
+    timeZone: 'Asia/Karachi',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
+}
+
 export default function AuditLogsPage() {
   const [shops, setShops] = useState([])
   const [logs, setLogs] = useState([])
@@ -172,7 +190,7 @@ export default function AuditLogsPage() {
               ) : (
                 logs.map((log) => (
                   <tr key={log.id}>
-                    <td className="text-sm">{new Date(log.created_at).toLocaleString()}</td>
+                    <td className="text-sm">{formatPakistanTime(log.created_at)}</td>
                     <td>{log.shop_name || '-'}</td>
                     <td className="text-sm">{log.actor_role || '-'} #{log.actor_id || '-'}</td>
                     <td>

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Truck, Package, DollarSign,
   TrendingUp, LogOut, Menu, X, Droplets, FileText, SlidersHorizontal, ArrowDownUp
 } from 'lucide-react'
-import { isPetTradingMode } from '../../lib/businessMode'
+import { isHybridMode, isPetTradingMode } from '../../lib/businessMode'
 
 const standardMenuItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -37,17 +37,43 @@ const petCashierMenuItems = [
   { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
 ]
 
+const hybridOwnerMenuItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard/customers', icon: Users, label: 'Customers' },
+  { href: '/dashboard/deliveries', icon: Truck, label: '19L Deliveries' },
+  { href: '/dashboard/inventory', icon: Package, label: '19L Inventory' },
+  { href: '/dashboard/items', icon: Package, label: 'PET Items' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Stock & Sales' },
+  { href: '/dashboard/payments', icon: DollarSign, label: 'Payments' },
+  { href: '/dashboard/invoice', icon: FileText, label: 'Invoice' },
+  { href: '/dashboard/expenses', icon: TrendingUp, label: 'Expenses' },
+  { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
+  { href: '/dashboard/settings', icon: SlidersHorizontal, label: 'Settings' },
+]
+
+const hybridCashierMenuItems = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard/customers', icon: Users, label: 'Customers' },
+  { href: '/dashboard/deliveries', icon: Truck, label: '19L Deliveries' },
+  { href: '/dashboard/items', icon: Package, label: 'PET Items' },
+  { href: '/dashboard/stock', icon: ArrowDownUp, label: 'PET Stock & Sales' },
+  { href: '/dashboard/reports', icon: TrendingUp, label: 'Reports' },
+]
+
 export default function DashboardLayout({ children }) {
   const { user, logout, loading, mounted } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const petMode = isPetTradingMode(user)
+  const hybridMode = isHybridMode(user)
   const visibleMenuItems = useMemo(() => (
-    petMode
+    hybridMode
+      ? (user?.type === 'staff' ? hybridCashierMenuItems : hybridOwnerMenuItems)
+      : petMode
       ? (user?.type === 'staff' ? petCashierMenuItems : petOwnerMenuItems)
       : standardMenuItems.filter((item) => !item.ownerOnly || user?.type !== 'staff')
-  ), [petMode, user?.type])
+  ), [hybridMode, petMode, user?.type])
 
   useEffect(() => {
     if (!mounted) return
@@ -66,15 +92,15 @@ export default function DashboardLayout({ children }) {
     const allowedPaths = visibleMenuItems.map((item) => item.href)
     const isAllowed = allowedPaths.some((href) => pathname === href || pathname.startsWith(`${href}/`))
 
-    if (!petMode && (pathname.startsWith('/dashboard/items') || pathname.startsWith('/dashboard/stock'))) {
+    if (!petMode && !hybridMode && (pathname.startsWith('/dashboard/items') || pathname.startsWith('/dashboard/stock'))) {
       router.replace('/dashboard')
       return
     }
 
-    if (petMode && !isAllowed) {
+    if ((petMode || hybridMode) && !isAllowed) {
       router.replace('/dashboard')
     }
-  }, [mounted, user, pathname, petMode, router, visibleMenuItems])
+  }, [mounted, user, pathname, hybridMode, petMode, router, visibleMenuItems])
 
   if (!mounted || loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>

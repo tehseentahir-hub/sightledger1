@@ -11,24 +11,59 @@ export function AuthProvider({ children }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     setMounted(true)
 
-    try {
-      const token = localStorage.getItem('token')
-      const userData = localStorage.getItem('user')
-      if (token && userData) {
-        const parsed = JSON.parse(userData)
-        if (parsed && typeof parsed === 'object') {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          setUser(parsed)
-        }
-      }
-    } catch (error) {
+    const clearSession = () => {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       delete axios.defaults.headers.common['Authorization']
-    } finally {
-      setLoading(false)
+      setUser(null)
+    }
+
+    const hydrateSession = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const userData = localStorage.getItem('user')
+
+        if (!token || !userData) {
+          clearSession()
+          return
+        }
+
+        const cachedUser = JSON.parse(userData)
+        if (!cachedUser || typeof cachedUser !== 'object') {
+          clearSession()
+          return
+        }
+
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        const res = await axios.get(`${API_URL}/auth/me`)
+        if (cancelled) return
+
+        const verifiedUser = {
+          ...cachedUser,
+          ...res.data,
+          role: res.data?.role || cachedUser.role,
+          type: res.data?.type || cachedUser.type,
+          shop_id: res.data?.shop_id || cachedUser.shop_id || res.data?.id,
+          name: res.data?.name || cachedUser.name || res.data?.owner_name,
+          business_mode: res.data?.business_mode || cachedUser.business_mode,
+        }
+
+        localStorage.setItem('user', JSON.stringify(verifiedUser))
+        setUser(verifiedUser)
+      } catch (error) {
+        if (!cancelled) clearSession()
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    hydrateSession()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 

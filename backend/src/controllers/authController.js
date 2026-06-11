@@ -170,7 +170,7 @@ const login = async (req, res) => {
 };
 
 const getMe = (req, res) => {
-  const { id, shop_id, type } = req.user;
+  const { id, shop_id, role, type } = req.user;
   const targetShopId = type === 'staff' ? shop_id : id;
 
   db.get(`
@@ -185,7 +185,44 @@ const getMe = (req, res) => {
   `, [targetShopId], (err, shop) => {
     if (err) return res.status(500).json({ message: 'Error fetching shop info' });
     if (!shop) return res.status(404).json({ message: 'Shop not found' });
-    res.json(shop);
+    if (!shop.is_active) return res.status(401).json({ message: 'Account is deactivated' });
+    if (isDateExpired(shop.subscription_expiry) && !isSuperAdminShop(shop)) {
+      return res.status(403).json({
+        message: 'Subscription expired',
+        expired: true,
+        subscription_type: shop.subscription_type
+      });
+    }
+
+    const baseUser = {
+      ...shop,
+      role,
+      type: type || 'shop',
+      shop_id: targetShopId,
+      name: shop.owner_name,
+      business_mode: normalizeBusinessMode(shop.business_mode),
+      default_refill_rate: shop.default_refill_rate || 100
+    };
+
+    if (type !== 'staff') {
+      return res.json(baseUser);
+    }
+
+    db.get('SELECT id, name, phone, role, is_active FROM staff WHERE id = ? AND shop_id = ?', [id, targetShopId], (staffErr, staff) => {
+      if (staffErr) return res.status(500).json({ message: 'Error fetching staff info' });
+      if (!staff || !staff.is_active) return res.status(401).json({ message: 'Staff account is inactive' });
+
+      return res.json({
+        ...baseUser,
+        id: staff.id,
+        name: staff.name,
+        phone: staff.phone,
+        role: staff.role,
+        type: 'staff',
+        shop_id: targetShopId,
+        owner_name: shop.owner_name,
+      });
+    });
   });
 };
 

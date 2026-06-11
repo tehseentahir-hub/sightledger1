@@ -183,7 +183,13 @@ export default function ShopsPage() {
                         <span className="badge badge-info">{s.subscription_type?.replace('_', ' ')}</span>
                       </td>
                       <td>
-                        <span className={`badge ${s.business_mode === BUSINESS_MODES.PET_TRADING ? 'badge-warning' : 'badge-info'}`}>
+                        <span className={`badge ${
+                          s.business_mode === BUSINESS_MODES.PET_TRADING
+                            ? 'badge-warning'
+                            : s.business_mode === BUSINESS_MODES.HYBRID
+                              ? 'badge-success'
+                              : 'badge-info'
+                        }`}>
                           {getBusinessModeLabel(s.business_mode)}
                         </span>
                       </td>
@@ -276,9 +282,10 @@ export default function ShopsPage() {
                 >
                   <option value={BUSINESS_MODES.WATER_19L}>Standard Water Delivery</option>
                   <option value={BUSINESS_MODES.PET_TRADING}>PET / Multi-Size Inventory</option>
+                  <option value={BUSINESS_MODES.HYBRID}>Hybrid: 19L + PET Inventory</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Standard mode keeps the current 19L workflow. PET mode enables multi-size inventory and daily stock/sales records.
+                  Standard keeps the 19L workflow. PET is stock/sales only. Hybrid keeps 19L customers, deliveries, invoices, and also enables PET inventory.
                 </p>
               </div>
 

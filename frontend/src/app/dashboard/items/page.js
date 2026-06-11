@@ -8,7 +8,7 @@ import { Edit, Package, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import CenterDialog from '../../../components/CenterDialog'
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
-import { canViewPetFinancials, isPetTradingMode } from '../../../lib/businessMode'
+import { canViewPetFinancials, hasPetInventoryMode } from '../../../lib/businessMode'
 
 const emptyItem = {
   item_name: '',
@@ -31,7 +31,7 @@ export default function PetItemsPage() {
   const [form, setForm] = useState(emptyItem)
   const [dialog, setDialog] = useState({ open: false, type: 'error', title: '', message: '', onConfirm: null, onCancel: null })
 
-  const petMode = isPetTradingMode(user)
+  const petMode = hasPetInventoryMode(user)
   const ownerMode = user?.type !== 'staff'
   const showFinancials = canViewPetFinancials(user)
   const activeItems = useMemo(() => items.filter((item) => item.is_active), [items])

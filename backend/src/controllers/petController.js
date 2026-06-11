@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const {
   BUSINESS_MODES,
+  hasPetInventoryMode,
   isRestrictedPetCashier,
   normalizeBusinessMode,
 } = require('../utils/businessMode');
@@ -81,7 +82,7 @@ const getShopOrThrow = async (shopId) => {
     error.statusCode = 404;
     throw error;
   }
-  if (normalizeBusinessMode(shop.business_mode) !== BUSINESS_MODES.PET_TRADING) {
+  if (!hasPetInventoryMode(shop)) {
     const error = new Error('This shop is not enabled for PET inventory mode');
     error.statusCode = 403;
     throw error;
@@ -450,7 +451,7 @@ const getSummary = async (req, res) => {
     ]);
 
     res.json({
-      business_mode: BUSINESS_MODES.PET_TRADING,
+      business_mode: normalizeBusinessMode(shop.business_mode),
       total_skus: Number(stockTotals?.total_skus || 0),
       current_stock: Number(stockTotals?.current_stock || 0),
       today_sales_qty: Number(todaySales?.qty || 0),
@@ -558,7 +559,7 @@ const getReports = async (req, res) => {
     const totalSoldAmount = itemSummary.reduce((sum, row) => sum + Number(row.sold_amount || 0), 0);
 
     res.json({
-      business_mode: BUSINESS_MODES.PET_TRADING,
+      business_mode: normalizeBusinessMode(shop.business_mode),
       summary: {
         total_skus: itemSummary.length,
         total_sold_qty: totalSoldQty,

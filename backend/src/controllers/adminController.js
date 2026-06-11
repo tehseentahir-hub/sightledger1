@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { logAudit } = require('../utils/audit');
+const { normalizeBusinessMode } = require('../utils/businessMode');
 
 const systemShopFilter = `s.shop_name NOT IN ('AquaFlow System', 'Sight Ledger System') AND s.email != 'admin@aquaflow.com'`;
 const systemShopFilterNoAlias = `shop_name NOT IN ('AquaFlow System', 'Sight Ledger System') AND email != 'admin@aquaflow.com'`;
@@ -59,9 +60,11 @@ const createShop = (req, res) => {
         expiryDate.setDate(expiryDate.getDate() + planDurationDays);
         const expiry = expiryDate.toISOString().split('T')[0];
 
+        const normalizedBusinessMode = normalizeBusinessMode(business_mode);
+
         db.run(
           'INSERT INTO shops (shop_name, owner_name, phone, address, email, password, subscription_type, subscription_start, subscription_expiry, customer_limit, business_mode, default_refill_rate, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [shop_name, owner_name, phone, address, email, hashedPassword, subscription_type, startDate, expiry, customerLimit, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', 100, 1],
+          [shop_name, owner_name, phone, address, email, hashedPassword, subscription_type, startDate, expiry, customerLimit, normalizedBusinessMode, 100, 1],
           function(err) {
             if (err) {
               console.log('Insert error:', err);
@@ -76,7 +79,7 @@ const createShop = (req, res) => {
               action: 'create',
               entity_type: 'shop',
               entity_id: this.lastID,
-              details: { shop_name, subscription_type, customerLimit, duration_days: planDurationDays, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l' },
+              details: { shop_name, subscription_type, customerLimit, duration_days: planDurationDays, business_mode: normalizedBusinessMode },
             });
             res.status(201).json({ message: 'Shop created successfully', shop_id: this.lastID, duration_days: planDurationDays });
           }
@@ -92,12 +95,13 @@ const createShop = (req, res) => {
 const updateShop = (req, res) => {
   const { id } = req.params;
   const { shop_name, owner_name, phone, address, subscription_type, is_active, password, business_mode } = req.body;
+  const normalizedBusinessMode = normalizeBusinessMode(business_mode);
 
   if (password) {
     const hashedPassword = bcrypt.hashSync(password, 10);
     db.run(
       'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, business_mode = ?, is_active = ?, password = ? WHERE id = ?',
-      [shop_name, owner_name, phone, address, subscription_type, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active ? 1 : 0, hashedPassword, id],
+      [shop_name, owner_name, phone, address, subscription_type, normalizedBusinessMode, is_active ? 1 : 0, hashedPassword, id],
       function(err) {
         if (err) return res.status(500).json({ message: 'Error updating shop', error: err.message });
         logAudit({
@@ -107,7 +111,7 @@ const updateShop = (req, res) => {
           action: 'update',
           entity_type: 'shop',
           entity_id: Number(id),
-          details: { shop_name, subscription_type, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active: is_active ? 1 : 0, password_changed: true },
+          details: { shop_name, subscription_type, business_mode: normalizedBusinessMode, is_active: is_active ? 1 : 0, password_changed: true },
         });
         res.json({ message: 'Shop updated successfully' });
       }
@@ -115,7 +119,7 @@ const updateShop = (req, res) => {
   } else {
     db.run(
       'UPDATE shops SET shop_name = ?, owner_name = ?, phone = ?, address = ?, subscription_type = ?, business_mode = ?, is_active = ? WHERE id = ?',
-      [shop_name, owner_name, phone, address, subscription_type, business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active ? 1 : 0, id],
+      [shop_name, owner_name, phone, address, subscription_type, normalizedBusinessMode, is_active ? 1 : 0, id],
       function(err) {
         if (err) return res.status(500).json({ message: 'Error updating shop', error: err.message });
         logAudit({
@@ -125,7 +129,7 @@ const updateShop = (req, res) => {
           action: 'update',
           entity_type: 'shop',
           entity_id: Number(id),
-          details: { shop_name, subscription_type, business_mode: business_mode === 'pet_trading' ? 'pet_trading' : 'water_19l', is_active: is_active ? 1 : 0, password_changed: false },
+          details: { shop_name, subscription_type, business_mode: normalizedBusinessMode, is_active: is_active ? 1 : 0, password_changed: false },
         });
         res.json({ message: 'Shop updated successfully' });
       }

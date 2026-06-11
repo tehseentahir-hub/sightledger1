@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { isRestrictedPetCashier } = require('../utils/businessMode');
 
 const PK_TIMEZONE = 'Asia/Karachi';
 const toPkDateText = (date = new Date()) =>
@@ -52,6 +53,8 @@ const BOTTLES_OUTSIDE_TOTAL_SQL = WITH_CUSTOMERS_TOTAL_SQL.replace('as with_cust
 const getDashboard = async (req, res) => {
   try {
     const { shop_id } = req.user;
+    const shop = await pGet('SELECT id, business_mode FROM shops WHERE id = ?', [shop_id]);
+    const hideFinancials = isRestrictedPetCashier(req.user, shop);
     const today = toPkDateText();
     const last7Start = addDays(today, -6);
     const monthStart = `${today.slice(0, 8)}01`;
@@ -238,11 +241,11 @@ const getDashboard = async (req, res) => {
       today_homes: todayStats?.homes || 0,
       today_home_bottles: todayStats?.home_bottles || 0,
       active_customers: activeCustomers?.count || 0,
-      pending_payments: pendingPayments?.pending || 0,
-      advance_balance: advanceBalance?.advance || 0,
-      today_collection: Number(todayCollection?.today_collection || 0) + Number(todayWalkinCash?.walkin_cash || 0),
+      pending_payments: hideFinancials ? null : pendingPayments?.pending || 0,
+      advance_balance: hideFinancials ? null : advanceBalance?.advance || 0,
+      today_collection: hideFinancials ? null : Number(todayCollection?.today_collection || 0) + Number(todayWalkinCash?.walkin_cash || 0),
       bottles_outside: bottlesOutstanding?.outstanding || 0,
-      monthly_sales: monthlySales?.sales || 0,
+      monthly_sales: hideFinancials ? null : monthlySales?.sales || 0,
       last7_deliveries: last7Stats?.count || 0,
       last7_bottles: last7Stats?.bottles || 0,
       last7_walkins: last7Stats?.walkins || 0,
@@ -257,6 +260,7 @@ const getDashboard = async (req, res) => {
       month_home_bottles: monthStats?.home_bottles || 0,
       recent_deliveries: recentDeliveries,
       walkin_trend: walkinTrend,
+      financials_hidden: hideFinancials,
     });
   } catch (err) {
     res.status(500).json({ message: 'Error loading dashboard', error: err.message });
@@ -267,6 +271,12 @@ const getReports = async (req, res) => {
   try {
     const { shop_id } = req.user;
     const { type, start_date, end_date } = req.query;
+    const shop = await pGet('SELECT id, business_mode FROM shops WHERE id = ?', [shop_id]);
+    const hideFinancials = isRestrictedPetCashier(req.user, shop);
+
+    if (hideFinancials && ['profit', 'outstanding', 'customers'].includes(type)) {
+      return res.status(403).json({ message: 'Cashier access is limited to quantity and stock reports' });
+    }
 
     if (type === 'daily') {
       const report = await pAll(
@@ -291,12 +301,16 @@ const getReports = async (req, res) => {
       const summary = {
         total_customers: report.length,
         total_bottles: report.reduce((s, r) => s + Number(r.bottles_delivered || 0), 0),
-        total_amount: report.reduce((s, r) => s + Number(r.amount || 0), 0),
+        total_amount: hideFinancials ? null : report.reduce((s, r) => s + Number(r.amount || 0), 0),
         home_deliveries: report.filter(r => r.delivery_type === 'home_delivery').length,
         walkin_deliveries: report.filter(r => r.delivery_type === 'walk_in').length
       };
 
-      return res.json({ report, summary });
+      return res.json({
+        report: report.map((row) => ({ ...row, amount: hideFinancials ? null : row.amount })),
+        summary,
+        financials_hidden: hideFinancials,
+      });
     }
 
     if (type === 'monthly') {
@@ -327,14 +341,15 @@ const getReports = async (req, res) => {
       const summary = {
         total_deliveries: trend.reduce((sum, row) => sum + Number(row.total_deliveries || 0), 0),
         total_bottles: trend.reduce((sum, row) => sum + Number(row.total_bottles || 0), 0),
-        total_sales: trend.reduce((sum, row) => sum + Number(row.total_sales || 0), 0),
+        total_sales: hideFinancials ? null : trend.reduce((sum, row) => sum + Number(row.total_sales || 0), 0),
         walkin_deliveries: trend.reduce((sum, row) => sum + Number(row.walkin_deliveries || 0), 0),
         walkin_bottles: trend.reduce((sum, row) => sum + Number(row.walkin_bottles || 0), 0),
         home_deliveries: trend.reduce((sum, row) => sum + Number(row.home_deliveries || 0), 0),
         home_bottles: trend.reduce((sum, row) => sum + Number(row.home_bottles || 0), 0),
       };
 
-      return res.json({ report: trend, summary, trend });
+      const safeTrend = trend.map((row) => ({ ...row, total_sales: hideFinancials ? null : row.total_sales }));
+      return res.json({ report: safeTrend, summary, trend: safeTrend, financials_hidden: hideFinancials });
     }
 
     if (type === 'outstanding') {

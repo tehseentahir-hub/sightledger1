@@ -22,7 +22,7 @@ import {
 import { useAuth } from '../../../context/AuthContext'
 
 import { API_URL } from '../../../lib/api'
-import { isPetTradingMode } from '../../../lib/businessMode'
+import { isHybridMode, isPetTradingMode, isRestrictedPetCashier } from '../../../lib/businessMode'
 import PetReportsView from '../../../components/pet/PetReportsView'
 
 const currency = (value) => `Rs ${Number(value || 0).toLocaleString()}`
@@ -138,7 +138,10 @@ export default function ReportsPage() {
     year: new Date().getFullYear(),
   })
 
-  const reports = [
+  const petMode = isPetTradingMode(user)
+  const hybridMode = isHybridMode(user)
+  const restrictedHybridCashier = isRestrictedPetCashier(user)
+  const baseReports = [
     { value: 'monthly', label: 'Sales', desc: 'Monthly sales and bottles', icon: TrendingUp },
     { value: 'profit', label: 'Profit & Loss', desc: 'Income, expenses, profit', icon: WalletCards },
     { value: 'outstanding', label: 'Pending', desc: 'Payments to collect', icon: AlertCircle },
@@ -146,12 +149,22 @@ export default function ReportsPage() {
     { value: 'daily', label: 'Daily', desc: 'Date-wise delivery detail', icon: Calendar },
     { value: 'bottles', label: 'Bottles', desc: 'Inventory circulation', icon: Package },
   ]
-  const petMode = isPetTradingMode(user)
+  const reports = [
+    ...(restrictedHybridCashier ? baseReports.filter((item) => ['daily', 'bottles'].includes(item.value)) : baseReports),
+    ...(hybridMode ? [{ value: 'pet', label: 'PET', desc: 'PET stock and sales', icon: Package }] : []),
+  ]
+  const visibleMoney = (value) => (restrictedHybridCashier && (value === null || typeof value === 'undefined') ? 'Hidden' : currency(value))
 
   useEffect(() => {
-    if (petMode) return
+    if (restrictedHybridCashier && !reports.some((item) => item.value === activeReport)) {
+      setActiveReport('daily')
+    }
+  }, [restrictedHybridCashier, activeReport])
+
+  useEffect(() => {
+    if (petMode || (hybridMode && activeReport === 'pet')) return
     loadReport()
-  }, [activeReport, filter.month, filter.year, filter.start_date, filter.end_date, petMode])
+  }, [activeReport, filter.month, filter.year, filter.start_date, filter.end_date, hybridMode, petMode])
 
   const monthRange = () => ({
     start_date: `${filter.year}-${String(filter.month).padStart(2, '0')}-01`,
@@ -219,6 +232,34 @@ export default function ReportsPage() {
 
   if (petMode) {
     return <PetReportsView user={user} />
+  }
+
+  if (hybridMode && activeReport === 'pet') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-medium text-primary">Hybrid Reports</p>
+            <h1 className="text-2xl font-bold text-gray-900">Business Reports</h1>
+            <p className="mt-1 text-sm text-gray-500">Switch between 19L reports and PET inventory reports.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+          {reports.map((item) => (
+            <button
+              key={item.value}
+              onClick={() => setActiveReport(item.value)}
+              className={`rounded-xl border p-4 text-left transition ${activeReport === item.value ? 'border-primary bg-primary text-white shadow-md' : 'border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm'}`}
+            >
+              <item.icon className={`mb-3 h-5 w-5 ${activeReport === item.value ? 'text-white' : 'text-primary'}`} />
+              <p className="font-semibold">{item.label}</p>
+              <p className={`mt-1 text-xs ${activeReport === item.value ? 'text-white/80' : 'text-gray-500'}`}>{item.desc}</p>
+            </button>
+          ))}
+        </div>
+        <PetReportsView user={user} />
+      </div>
+    )
   }
 
   const active = reports.find((item) => item.value === activeReport)
@@ -429,14 +470,14 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard label="Deliveries" value={number(report.summary?.total_customers)} tone="blue" icon={Truck} />
             <StatCard label="Bottles" value={number(report.summary?.total_bottles)} tone="slate" icon={Package} />
-            <StatCard label="Revenue" value={currency(report.summary?.total_amount)} tone="green" icon={TrendingUp} />
+            <StatCard label="Revenue" value={visibleMoney(report.summary?.total_amount)} tone="green" icon={TrendingUp} />
             <StatCard label="Walk-ins" value={number(report.summary?.walkin_deliveries)} tone="amber" icon={Users} />
           </div>
           <ReportTable rows={report.report || []} columns={[
             ['customer_name', 'Customer'],
             ['bottles_delivered', 'Delivered'],
             ['bottles_returned', 'Returned'],
-            ['amount', 'Amount', currency],
+            ['amount', 'Amount', visibleMoney],
             ['delivery_type', 'Type', (value) => value === 'walk_in' ? 'Walk-in' : 'Home'],
             ['rider_name', 'Rider'],
           ]} emptyMessage="No deliveries were found for the selected date range." />

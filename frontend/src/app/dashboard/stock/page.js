@@ -8,7 +8,7 @@ import { ArrowDownUp, Boxes, Calendar, Plus, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../../../context/AuthContext'
 import CenterDialog from '../../../components/CenterDialog'
 import { API_URL, getRequestErrorMessage } from '../../../lib/api'
-import { canViewPetFinancials, isPetTradingMode, isRestrictedPetCashier } from '../../../lib/businessMode'
+import { canViewPetFinancials, hasPetInventoryMode, isRestrictedPetCashier } from '../../../lib/businessMode'
 
 const transactionTypes = [
   { value: 'stock_in', label: 'Stock In' },
@@ -39,7 +39,7 @@ export default function PetStockPage() {
   const [form, setForm] = useState(emptyForm)
   const [dialog, setDialog] = useState({ open: false, type: 'error', title: '', message: '', onConfirm: null, onCancel: null })
 
-  const petMode = isPetTradingMode(user)
+  const petMode = hasPetInventoryMode(user)
   const hideFinancials = isRestrictedPetCashier(user)
   const showFinancials = canViewPetFinancials(user)
   const activeItems = useMemo(() => items.filter((item) => item.is_active), [items])
